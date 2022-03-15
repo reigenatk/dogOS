@@ -28,6 +28,20 @@ int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 int32_t bad_userspace_addr(const void* addr, int32_t len);
 int32_t safe_strncpy(int8_t* dest, const int8_t* src, int32_t n);
 
+// my functions begin here
+
+// test interrupts to be called by RTC
+void test_interrupts(void);
+
+// scroll up
+void scroll_up();
+
+// bluescreen
+void bluescreen();
+
+// change location of write
+void change_write_head(int8_t new_x, int8_t new_y);
+
 /* Port read functions */
 /* Inb reads a byte and returns its value as a zero-extended 32-bit
  * unsigned int */
@@ -152,5 +166,6 @@ do {                                    \
             : "memory", "cc"            \
     );                                  \
 } while (0)
+
 
 #endif /* _LIB_H */
