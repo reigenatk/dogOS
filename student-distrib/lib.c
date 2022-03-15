@@ -24,29 +24,6 @@ void clear(void) {
     }
 }
 
-void bluescreen() {
-    uint8_t bluescreen_attribute = 0x1F; // 00011111
-    int32_t i;
-    for (i = 0; i < NUM_ROWS * NUM_COLS; i++)
-    {
-        *(uint8_t *)(video_mem + (i << 1) + 1) = bluescreen_attribute;
-    }
-}
-
-void scroll_up() {
-    // just go across all rows but the last, set the character + attribute equal to that of the 
-    // char and attribute one row down
-    int32_t i,j, v1, v2;
-    for (i = 0; i < NUM_ROWS - 1; i++) {
-        for (j = 0; j < NUM_COLS; j++) {
-            v1 = i * NUM_COLS + j;
-            v2 = (i+1) * NUM_COLS + j;
-            *(uint8_t *)(video_mem + (v1 << 1)) = *(uint8_t *)(video_mem + (v2 << 1));
-            *(uint8_t *)(video_mem + (v1 << 1) + 1) = *(uint8_t *)(video_mem + (v2 << 1) + 1);
-        }
-    }
-}
-
 /* Standard printf().
  * Only supports the following format strings:
  * %%  - print a literal '%' character
@@ -194,30 +171,12 @@ void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
         screen_y++;
         screen_x = 0;
-        if (screen_y == NUM_ROWS) {
-            // we are off the screen, so scroll up and move screen_y down 1
-            scroll_up();
-            screen_y--;
-        }
     } else {
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
-        if (screen_x == NUM_COLS - 1) {
-            // then go to new line if not last line
-            if (screen_y != NUM_ROWS - 1) {
-                screen_y++;
-                screen_x = 0;
-            }
-            else {
-                // screen y stays same, screen x becomes 0, we scroll up also
-                scroll_up();
-                screen_x = 0;
-            }
-        }
-        else {
-            // if not on the last column just increment x
-            screen_x++;
-        }
+        screen_x++;
+        screen_x %= NUM_COLS;
+        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
     }
 }
 
@@ -287,11 +246,6 @@ uint32_t strlen(const int8_t* s) {
     while (s[len] != '\0')
         len++;
     return len;
-}
-
-void change_write_head(int8_t new_x, int8_t new_y) {
-    screen_x = new_x;
-    screen_y = new_y;
 }
 
 /* void* memset(void* s, int32_t c, uint32_t n);

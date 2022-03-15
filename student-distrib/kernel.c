@@ -8,10 +8,6 @@
 #include "i8259.h"
 #include "debug.h"
 #include "tests.h"
-#include "paging.h"
-#include "interrupt_handlers.h"
-#include "keyboard.h"
-#include "RTC.h"
 
 #define RUN_TESTS
 
@@ -82,43 +78,37 @@ void entry(unsigned long magic, unsigned long addr) {
                 (unsigned)elf_sec->addr, (unsigned)elf_sec->shndx);
     }
 
-    // /* Are mmap_* valid? */
-    // if (CHECK_FLAG(mbi->flags, 6)) {
-    //     memory_map_t *mmap;
-    //     printf("mmap_addr = 0x%#x, mmap_length = 0x%x\n",
-    //             (unsigned)mbi->mmap_addr, (unsigned)mbi->mmap_length);
-    //     for (mmap = (memory_map_t *)mbi->mmap_addr;
-    //             (unsigned long)mmap < mbi->mmap_addr + mbi->mmap_length;
-    //             mmap = (memory_map_t *)((unsigned long)mmap + mmap->size + sizeof (mmap->size)))
-    //         printf("    size = 0x%x, base_addr = 0x%#x%#x\n    type = 0x%x,  length    = 0x%#x%#x\n",
-    //                 (unsigned)mmap->size,
-    //                 (unsigned)mmap->base_addr_high,
-    //                 (unsigned)mmap->base_addr_low,
-    //                 (unsigned)mmap->type,
-    //                 (unsigned)mmap->length_high,
-    //                 (unsigned)mmap->length_low);
-    // }
+    /* Are mmap_* valid? */
+    if (CHECK_FLAG(mbi->flags, 6)) {
+        memory_map_t *mmap;
+        printf("mmap_addr = 0x%#x, mmap_length = 0x%x\n",
+                (unsigned)mbi->mmap_addr, (unsigned)mbi->mmap_length);
+        for (mmap = (memory_map_t *)mbi->mmap_addr;
+                (unsigned long)mmap < mbi->mmap_addr + mbi->mmap_length;
+                mmap = (memory_map_t *)((unsigned long)mmap + mmap->size + sizeof (mmap->size)))
+            printf("    size = 0x%x, base_addr = 0x%#x%#x\n    type = 0x%x,  length    = 0x%#x%#x\n",
+                    (unsigned)mmap->size,
+                    (unsigned)mmap->base_addr_high,
+                    (unsigned)mmap->base_addr_low,
+                    (unsigned)mmap->type,
+                    (unsigned)mmap->length_high,
+                    (unsigned)mmap->length_low);
+    }
 
-    /* Construct an LDT entry in the GDT. Before this its been set to ".quad 0" in x86_desc.S, so all zeros. Now we intiialize it*/
+    /* Construct an LDT entry in the GDT */
     {
         seg_desc_t the_ldt_desc;
-        the_ldt_desc.granularity = 0x0; // is segment limit in byte units or 4kb units
-        the_ldt_desc.opsize      = 0x1; // 0 = 16bit segmenet, 1 = 32 bit segment. Use 1 always for 32 bit addresses (which we are doing) 
-        the_ldt_desc.reserved    = 0x0; // always set this to zero
-        the_ldt_desc.avail       = 0x0; // avilable to system use
+        the_ldt_desc.granularity = 0x0;
+        the_ldt_desc.opsize      = 0x1;
+        the_ldt_desc.reserved    = 0x0;
+        the_ldt_desc.avail       = 0x0;
         the_ldt_desc.present     = 0x1;
-        the_ldt_desc.dpl         = 0x0; // DPL, privlege level of the segment. 
-        the_ldt_desc.sys         = 0x0; // Specifies whether the segment descriptor is for a system segment (S flag is clear) or a code or data segment (S flag is set).
+        the_ldt_desc.dpl         = 0x0;
+        the_ldt_desc.sys         = 0x0;
         the_ldt_desc.type        = 0x2;
 
-        // all this does is fill in the rest of the 64 bit desciptor entry, since up to now we've only done the flags
         SET_LDT_PARAMS(the_ldt_desc, &ldt, ldt_size);
-
-        // sets the variable in x86_desc.h to this newly made descriptor
-        // and that variable is declared extern so what I think this basically is doing is, it 
-        // lets us write directly to the memory address that the x86_desc.S's ldt_desc_ptr label would be pointing to
         ldt_desc_ptr = the_ldt_desc;
-
         lldt(KERNEL_LDT);
     }
 
@@ -146,33 +136,18 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
-    // populate the interrupt descriptor table
-    printf("Populating IDT with descriptors\t");
-
-    init_interrupt_descriptors();
-
-    /* Init the PIC + all exception handlers */
-    printf("Initializing PIC");
+    /* Init the PIC */
     i8259_init();
 
-    // devices (Keyboard + RTC)
-    printf("Initializing Keyboard\n");
-    init_keyboard();
-    printf("Initializing RTC\n");
-    init_RTC();
-    set_RTC_rate(15);
-
-    // paging
-    printf("Initializing Paging");
-    setup_paging();
+    /* Initialize devices, memory, filesystem, enable device interrupts on the
+     * PIC, any other initialization stuff... */
 
     /* Enable interrupts */
-    /* Do not enasble the following until after you have set up your
-        * IDT correctly otherwise QEMU will triple fault and simple close
-        * without showing you any output */
-
-    printf("Enabling Interrupts\n");
-    sti();
+    /* Do not enable the following until after you have set up your
+     * IDT correctly otherwise QEMU will triple fault and simple close
+     * without showing you any output */
+    /*printf("Enabling Interrupts\n");
+    sti();*/
 
 #ifdef RUN_TESTS
     /* Run tests */

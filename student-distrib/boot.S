@@ -26,15 +26,8 @@ _start:
 continue:
     # Load the GDT
 
-    # Loads the values in the source operand into the global descriptor table register (GDTR) 
-    # or the interrupt descriptor table register (IDTR). The source operand specifies a 6-byte memory 
-    # location that contains the base address (a linear address) 
-    # and the limit (size of table in bytes) of the global descriptor table (GDT) or the interrupt descriptor table (IDT)
-    lgdt gdt_desc
-    lidt idt_desc_ptr
-
     # Load CS with the new descriptor value
-    ljmp $KERNEL_CS, $keep_going
+    ljmp    $KERNEL_CS, $keep_going
 
 keep_going:
     # Set up ESP so we can have an initial stack

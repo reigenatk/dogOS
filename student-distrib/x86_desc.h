@@ -8,16 +8,13 @@
 
 #include "types.h"
 
-/* Segment selector values (bytes 3-15 are index # in the GDT, byte 2 is TI flag, bytes 0-1 are RPL) 
-   Entry #0 is always empty in GDT, 1 is also unused, which is why it starts at index #2
-   To get base address in GDT, take index # * 8 (because 8 bytes per entry in GDT) + base address of GDT (found in GDTR register)
-*/
-#define KERNEL_CS   0x0010 // 010
-#define KERNEL_DS   0x0018 // 011
-#define USER_CS     0x0023 // 100, RPL = 3
-#define USER_DS     0x002B // 101, RPL = 3
-#define KERNEL_TSS  0x0030 // 110
-#define KERNEL_LDT  0x0038 // 111
+/* Segment selector values */
+#define KERNEL_CS   0x0010
+#define KERNEL_DS   0x0018
+#define USER_CS     0x0023
+#define USER_DS     0x002B
+#define KERNEL_TSS  0x0030
+#define KERNEL_LDT  0x0038
 
 /* Size of the task state segment (TSS) */
 #define TSS_SIZE    104
@@ -151,14 +148,13 @@ do {                                                            \
 typedef union idt_desc_t {
     uint32_t val[2];
     struct {
-        // 16+16+8+6+2+16 = 48+16 = 64 bytes. So yea this matches up
         uint16_t offset_15_00;
         uint16_t seg_selector;
         uint8_t  reserved4;
         uint32_t reserved3 : 1;
         uint32_t reserved2 : 1;
         uint32_t reserved1 : 1;
-        uint32_t size      : 1; // size of gate, 1 for 32 bit, 0 for 16 bit
+        uint32_t size      : 1;
         uint32_t reserved0 : 1;
         uint32_t dpl       : 2;
         uint32_t present   : 1;

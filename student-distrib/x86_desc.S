@@ -22,18 +22,9 @@ ldt_size:
     .long ldt_bottom - ldt - 1
 
     .word 0 # Padding
-ldt_desc: # ldtr
-    .word KERNEL_LDT # segment selector (bytes 0-15) = 0x38. 
-    .long ldt # base address of segment descriptor (bytes 16-47)
-
-.align 4
-  .word 0
-# The GDTR register holds the 32-bit base address and 16-bit table limit for the GDT. The base
-#address specifies the linear address of byte 0 of the GDT; the table limit specifies the number of
-#bytes in the table
-gdt_desc: 
-    .word gdt_bottom - gdt - 1 # table limit
-    .long gdt # base address
+ldt_desc:
+    .word KERNEL_LDT
+    .long ldt
 
     .align 4
 tss:
@@ -71,19 +62,14 @@ _gdt:
     # |----------------------------------------------------------------------|
 
 gdt_ptr:
-    # all entries here have S = 1 which indicates code + data segment as opposed to system segment (0)
-    # Also DPL = 0 for first 2 segments but 3 for the other 2 which makes sense since its 2 kernel, 2 user
-    # And finally, type (which deal with read/write access)
-    # is different between CS and DS. Other than these changes, they are identical.
-    
     # Set up an entry for kernel CS
-    .quad 0x00CF9A000000FFFF # type here is A, which is execute/read. 
+    .quad 0x00CF9A000000FFFF
 
     # Set up an entry for kernel DS
-    .quad 0x00CF92000000FFFF # type = 2, read/write
+    .quad 0x00CF92000000FFFF
 
     # Set up an entry for user CS
-    .quad 0x00CFFA000000FFFF # 
+    .quad 0x00CFFA000000FFFF
 
     # Set up an entry for user DS
     .quad 0x00CFF2000000FFFF
@@ -107,7 +93,7 @@ ldt_bottom:
 
 .align 4
     .word 0 # Padding
-idt_desc_ptr: # IDTR, 16 bit table limit (# of bytes in table) and 32 bit linear base address of idt
+idt_desc_ptr:
     .word idt_bottom - idt - 1
     .long idt
 
