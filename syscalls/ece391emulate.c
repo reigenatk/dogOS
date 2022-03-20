@@ -44,24 +44,25 @@ asm volatile ("                    \
 extern int32_t __ece391_read (int32_t fd, void* buf, int32_t nbytes);
 extern int32_t __ece391_write (int32_t fd, const void* buf, int32_t nbytes);
 extern int32_t __ece391_close (int32_t fd);
+
 void fake_function () {
-DO_CALL(ece391_halt,1 /* SYS_HALT */);
-DO_CALL(__ece391_read,3 /* SYS_READ */);
-DO_CALL(__ece391_write,4 /* SYS_WRITE */);
-DO_CALL(__ece391_close,6 /* SYS_CLOSE */);
+    DO_CALL(ece391_halt,1 /* SYS_HALT */);
+    DO_CALL(__ece391_read,3 /* SYS_READ */);
+    DO_CALL(__ece391_write,4 /* SYS_WRITE */);
+    DO_CALL(__ece391_close,6 /* SYS_CLOSE */);
 
-/* Call the main() function, then halt with its return value. */
+    /* Call the main() function, then halt with its return value. */
 
-asm volatile ("                         \n\
-.GLOBAL _start                          \n\
-_start:                                 \n\
-	MOVL	%ESP,start_esp          \n\
-        CALL	main                    \n\
-	PUSHL	%EAX                    \n\
-	CALL	ece391_halt             \n\
-");
+    asm volatile ("                         \n\
+    .GLOBAL _start                          \n\
+    _start:                                 \n\
+        MOVL	%ESP,start_esp          \n\
+            CALL	main                    \n\
+        PUSHL	%EAX                    \n\
+        CALL	ece391_halt             \n\
+    ");
 
-/* end of fake container function */
+    /* end of fake container function */
 }
 
 int32_t 

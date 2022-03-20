@@ -1,0 +1,8 @@
+1. Had a bug with keyboard input where if I typed too many keys at once, kernel would just close down. Was confused 
+too because I had interrupts disabled during all of my key handling functions. Turns out the solution was to 
+add some assembly linkage, by just calling IRET
+We do this in interrupt_wrapper.S
+This was really strange because 
+
+2. Had issue where RTC would only interrupt once and then never again. I deduced that this was because my 
+send_eoi wasn't working, sure enough I was sending the wrong bytes. 

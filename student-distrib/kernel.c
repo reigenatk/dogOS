@@ -8,6 +8,15 @@
 #include "i8259.h"
 #include "debug.h"
 #include "tests.h"
+<<<<<<< HEAD
+=======
+#include "paging.h"
+#include "interrupt_handlers.h"
+#include "keyboard.h"
+#include "RTC.h"
+#include "filesystem.h"
+
+>>>>>>> detached
 
 #define RUN_TESTS
 
@@ -59,7 +68,7 @@ void entry(unsigned long magic, unsigned long addr) {
             for (i = 0; i < 16; i++) {
                 printf("0x%x ", *((char*)(mod->mod_start+i)));
             }
-            printf("\n");
+            printf("%s\n", mod->string);
             mod_count++;
             mod++;
         }
@@ -78,6 +87,7 @@ void entry(unsigned long magic, unsigned long addr) {
                 (unsigned)elf_sec->addr, (unsigned)elf_sec->shndx);
     }
 
+<<<<<<< HEAD
     /* Are mmap_* valid? */
     if (CHECK_FLAG(mbi->flags, 6)) {
         memory_map_t *mmap;
@@ -96,6 +106,31 @@ void entry(unsigned long magic, unsigned long addr) {
     }
 
     /* Construct an LDT entry in the GDT */
+=======
+    // /* Are mmap_* valid? */
+    // if (CHECK_FLAG(mbi->flags, 6)) {
+    //     memory_map_t *mmap;
+    //     printf("mmap_addr = 0x%#x, mmap_length = 0x%x\n",
+    //             (unsigned)mbi->mmap_addr, (unsigned)mbi->mmap_length);
+    //     for (mmap = (memory_map_t *)mbi->mmap_addr;
+    //             (unsigned long)mmap < mbi->mmap_addr + mbi->mmap_length;
+    //             mmap = (memory_map_t *)((unsigned long)mmap + mmap->size + sizeof (mmap->size)))
+    //         printf("    size = 0x%x, base_addr = 0x%#x%#x\n    type = 0x%x,  length    = 0x%#x%#x\n",
+    //                 (unsigned)mmap->size,
+    //                 (unsigned)mmap->base_addr_high,
+    //                 (unsigned)mmap->base_addr_low,
+    //                 (unsigned)mmap->type,
+    //                 (unsigned)mmap->length_high,
+    //                 (unsigned)mmap->length_low);
+    // }
+
+    // print bootloader name
+    if (CHECK_FLAG(mbi->flags, 9)) {
+        printf("bootlader name: %s\n", mbi->boot_loader_name);
+    }
+
+    /* Construct an LDT entry in the GDT. Before this its been set to ".quad 0" in x86_desc.S, so all zeros. Now we intiialize it*/
+>>>>>>> detached
     {
         seg_desc_t the_ldt_desc;
         the_ldt_desc.granularity = 0x0;
@@ -126,17 +161,37 @@ void entry(unsigned long magic, unsigned long addr) {
         the_tss_desc.type          = 0x9;
         the_tss_desc.seg_lim_15_00 = TSS_SIZE & 0x0000FFFF;
 
+        // set tss descriptor in gdt to point to tss
         SET_TSS_PARAMS(the_tss_desc, &tss, tss_size);
 
+        // sets tss seg desc to address of descriptor which will go in gdt
         tss_desc_ptr = the_tss_desc;
 
         tss.ldt_segment_selector = KERNEL_LDT;
         tss.ss0 = KERNEL_DS;
         tss.esp0 = 0x800000;
+
+        // load task register with the 16bit seg selector to the tss entry in gdt
+        // implicitly populates the shadow register too for tss descirptor
         ltr(KERNEL_TSS);
     }
 
+<<<<<<< HEAD
     /* Init the PIC */
+=======
+    // populate the interrupt descriptor table
+    printf("Populating IDT with descriptors");
+
+    init_interrupt_descriptors();
+
+    // initiate filesystem
+    printf("Init Filesystem");
+    module_t* mod = (module_t*)mbi->mods_addr;
+    init_filesystem(mod->mod_start);
+
+    /* Init the PIC + all exception handlers */
+    printf("Initializing PIC");
+>>>>>>> detached
     i8259_init();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
