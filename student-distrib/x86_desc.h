@@ -12,7 +12,7 @@
    Entry #0 is always empty in GDT, 1 is also unused, which is why it starts at index #2
    To get base address in GDT, take index # * 8 (because 8 bytes per entry in GDT) + base address of GDT (found in GDTR register)
 */
-#define KERNEL_CS   0x0010 // 010
+#define KERNEL_CS   0x0010 // index = 010 = 2
 #define KERNEL_DS   0x0018 // 011
 #define USER_CS     0x0023 // 100, RPL = 3
 #define USER_DS     0x002B // 101, RPL = 3

@@ -4,6 +4,9 @@
     "lib.h": "c",
     "interrupt_handlers.h": "c",
     "keyboard.h": "c",
-    "rtc.h": "c"
+    "rtc.h": "c",
+    "stdint.h": "c",
+    "fcntl.h": "c",
+    "filesystem.h": "c"
   }
 }

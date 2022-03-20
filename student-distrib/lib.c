@@ -294,6 +294,17 @@ void change_write_head(int8_t new_x, int8_t new_y) {
     screen_y = new_y;
 }
 
+void do_backspace() {
+    if (screen_x == 0) {
+        // nothing to do
+        return;
+    }
+    // move back one and then delete the character already there
+    screen_x--;
+    uint32_t idx = screen_y * NUM_COLS + screen_x;
+    *(uint8_t *)(video_mem + ((idx) << 1)) = ' ';
+}
+
 /* void* memset(void* s, int32_t c, uint32_t n);
  * Inputs:    void* s = pointer to memory
  *          int32_t c = value to set memory to

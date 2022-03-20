@@ -1,13 +1,18 @@
 boot.o: boot.S multiboot.h x86_desc.h types.h
 interrupt_wrapper.o: interrupt_wrapper.S
+system_call_public.o: system_call_public.S ece391sysnum.h
 x86_desc.o: x86_desc.S x86_desc.h types.h
+filesystem.o: filesystem.c filesystem.h types.h lib.h
 i8259.o: i8259.c i8259.h types.h lib.h
 interrupt_handlers.o: interrupt_handlers.c interrupt_handlers.h \
   x86_desc.h types.h lib.h
 kernel.o: kernel.c multiboot.h types.h x86_desc.h lib.h i8259.h debug.h \
-  tests.h paging.h interrupt_handlers.h keyboard.h RTC.h
-keyboard.o: keyboard.c keyboard.h i8259.h types.h lib.h RTC.h
+  tests.h paging.h interrupt_handlers.h keyboard.h RTC.h system_calls.h \
+  filesystem.h
+keyboard.o: keyboard.c keyboard.h i8259.h types.h lib.h RTC.h \
+  system_calls.h
 lib.o: lib.c lib.h types.h
 paging.o: paging.c paging.h types.h lib.h
 RTC.o: RTC.c RTC.h types.h i8259.h lib.h
-tests.o: tests.c tests.h x86_desc.h types.h lib.h
+system_calls.o: system_calls.c system_calls.h types.h lib.h
+tests.o: tests.c tests.h x86_desc.h types.h lib.h filesystem.h

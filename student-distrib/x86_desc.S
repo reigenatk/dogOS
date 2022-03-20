@@ -38,7 +38,7 @@ gdt_desc:
     .align 4
 tss:
 _tss:
-    .rept 104
+    .rept 104 # this is 104 because that's the size of a TSS (all the general registers, flags, etc.) Page 211 in manual
     .byte 0
     .endr
 tss_bottom:

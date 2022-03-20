@@ -3,9 +3,11 @@
 // this is standard interrupt vector for keyboard, as seen in the course notes. It's also IRQ1 on master PIC.
 #define KEYBOARD_INTERRUPT_VECTOR 0x21 
 #define RTC_INTERRUPT_VECTOR 0x28
+#define SYSCALL_INTERRUPT_VECTOR 0x80 // INT 0x80
 
 // use a macro to mass produce a bunch of functions
 //spin infinitely otherwise this exception handler will get spam called
+// also use #, the alternative operator, to dereference names of macro arguments
 #define GENERIC_INTERRUPT_HANDLER(name_of_handler) \
   void name_of_handler()                           \
   {                                                \
@@ -82,10 +84,12 @@ void add_interrupt_handler_functions() {
 
   SET_IDT_ENTRY(idt[KEYBOARD_INTERRUPT_VECTOR], keyboard_handler_wrapper);
   SET_IDT_ENTRY(idt[RTC_INTERRUPT_VECTOR], rtc_handler_wrapper);
+
+  // Generic syscall handler 0x80
+  SET_IDT_ENTRY(idt[SYSCALL_INTERRUPT_VECTOR], syscall_handler_wrapper);
 }
 
-
-// we also have to initialize all of the 
+// we also have to initialize all of the descriptors
 void init_interrupt_descriptors() {
   add_interrupt_handler_functions();
 
@@ -102,8 +106,9 @@ void init_interrupt_descriptors() {
     idt[i].reserved1 = 1;
     idt[i].size = 1; // 32 bit
     idt[i].reserved0 = 0;
-    idt[i].dpl = 0; // only ring 0 should be able to use INT (soft interrupt)
+    idt[i].dpl = 0; // only ring 0 should be able to use this
     idt[i].present = 1;
   }
+  // make the syscall descriptor dpl = 3 since syscalls have to be invokable from user
+  idt[SYSCALL_INTERRUPT_VECTOR].dpl = 3;
 }
-

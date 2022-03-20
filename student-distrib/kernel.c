@@ -12,6 +12,8 @@
 #include "interrupt_handlers.h"
 #include "keyboard.h"
 #include "RTC.h"
+#include "filesystem.h"
+
 
 #define RUN_TESTS
 
@@ -63,7 +65,7 @@ void entry(unsigned long magic, unsigned long addr) {
             for (i = 0; i < 16; i++) {
                 printf("0x%x ", *((char*)(mod->mod_start+i)));
             }
-            printf("\n");
+            printf("%s\n", mod->string);
             mod_count++;
             mod++;
         }
@@ -98,6 +100,11 @@ void entry(unsigned long magic, unsigned long addr) {
     //                 (unsigned)mmap->length_high,
     //                 (unsigned)mmap->length_low);
     // }
+
+    // print bootloader name
+    if (CHECK_FLAG(mbi->flags, 9)) {
+        printf("bootlader name: %s\n", mbi->boot_loader_name);
+    }
 
     /* Construct an LDT entry in the GDT. Before this its been set to ".quad 0" in x86_desc.S, so all zeros. Now we intiialize it*/
     {
@@ -136,20 +143,30 @@ void entry(unsigned long magic, unsigned long addr) {
         the_tss_desc.type          = 0x9;
         the_tss_desc.seg_lim_15_00 = TSS_SIZE & 0x0000FFFF;
 
+        // set tss descriptor in gdt to point to tss
         SET_TSS_PARAMS(the_tss_desc, &tss, tss_size);
 
+        // sets tss seg desc to address of descriptor which will go in gdt
         tss_desc_ptr = the_tss_desc;
 
         tss.ldt_segment_selector = KERNEL_LDT;
         tss.ss0 = KERNEL_DS;
         tss.esp0 = 0x800000;
+
+        // load task register with the 16bit seg selector to the tss entry in gdt
+        // implicitly populates the shadow register too for tss descirptor
         ltr(KERNEL_TSS);
     }
 
     // populate the interrupt descriptor table
-    printf("Populating IDT with descriptors\t");
+    printf("Populating IDT with descriptors");
 
     init_interrupt_descriptors();
+
+    // initiate filesystem
+    printf("Init Filesystem");
+    module_t* mod = (module_t*)mbi->mods_addr;
+    init_filesystem(mod->mod_start);
 
     /* Init the PIC + all exception handlers */
     printf("Initializing PIC");

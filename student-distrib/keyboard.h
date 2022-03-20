@@ -4,6 +4,7 @@
 #include "i8259.h"
 #include "lib.h"
 #include "RTC.h"
+#include "system_calls.h"
 
 void init_keyboard();
 void keyboard_INT();

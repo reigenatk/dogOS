@@ -94,6 +94,7 @@
 
 uint8_t is_caps_lock_toggled = 0;
 uint8_t is_shift_key_pressed = 0;
+uint8_t is_ctrl_key_pressed = 0;
 
 #define NUM_KEYS 70
 #define KEYBOARD_IRQ 1
@@ -176,7 +177,8 @@ void dereference_null() {
   int a = 3 / 0;
 }
 
-void keyboard_INT() {
+// desginate this as an interrupt handler so it IRET's instead of leave + ret
+__attribute__((interrupt)) void keyboard_INT() {
   // IO Port 0x60 is used by the Keyboard. This is just standard, you can look it up
   // To read data from the keyboard we just read from port 0x60 using IN, and then send EOI
   // Port 0x64 is also useful maybe, its the command register
@@ -211,8 +213,17 @@ void keyboard_INT() {
   else if (keycode == KEY_LEFTSHIFT + RELEASE_CODE || keycode == KEY_RIGHTSHIFT + RELEASE_CODE) {
     is_shift_key_pressed = 0;
   }
+  else if (keycode == KEY_LEFTCTRL) {
+    is_ctrl_key_pressed = 1;
+  }
+  else if (keycode == KEY_LEFTCTRL + RELEASE_CODE) {
+    is_ctrl_key_pressed = 0;
+  }
   else if (keycode == KEY_CAPSLOCK) {
     is_caps_lock_toggled = !is_caps_lock_toggled;
+  }
+  else if (keycode == KEY_BACKSPACE) {
+    do_backspace();
   }
   else {
     if (keycode <= NUM_KEYS) {
@@ -220,17 +231,20 @@ void keyboard_INT() {
 
       // if the character is not displayable, do not display
       if (keys[keycode].should_display == 0) {
-        enable_irq(KEYBOARD_IRQ);
-        sti();
-        return;
+        goto done;
       }
 
       // press 1 key to test the RTC interrupt functionality
       if (keycode == KEY_1) {
         toggle_run();
       }
+      // press 2 key to get an exception
       if (keycode == KEY_2) {
         dereference_null();
+      }
+      // press 3 to test interrupts
+      if (keycode == KEY_3) {
+        halt(0x21);
       }
 
       uint8_t key_char = 0;
@@ -243,17 +257,27 @@ void keyboard_INT() {
         key_char = keys[keycode].caps_and_shift;
       }
       else if (!is_shift_key_pressed && !is_caps_lock_toggled) {
+        // no shift no caps
         key_char = keys[keycode].lowercase_char;
       }
       else if (!is_shift_key_pressed && is_caps_lock_toggled) {
+        // no shift + caps
         key_char = keys[keycode].uppercase_char;
       }
 
+      if (keycode == KEY_L && is_ctrl_key_pressed == 1) {
+        // CTRL + L, then we will reset cursor to top left 
+        // and also clear screen
+        clear();
+        change_write_head(0, 0);
+        goto done;
+      }
 
       putc(key_char);
     }
   }
 
+done:
   enable_irq(KEYBOARD_IRQ);
   sti();
 }
