@@ -109,7 +109,6 @@ void entry(unsigned long magic, unsigned long addr) {
     }
 
     /* Construct an LDT entry in the GDT. Before this its been set to ".quad 0" in x86_desc.S, so all zeros. Now we intiialize it*/
->>>>>>> detached
     {
         seg_desc_t the_ldt_desc;
         the_ldt_desc.granularity = 0x0; // is segment limit in byte units or 4kb units
