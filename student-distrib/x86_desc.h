@@ -8,7 +8,7 @@
 
 #include "types.h"
 
-<<<<<<< HEAD
+
 /* Segment selector values */
 #define KERNEL_CS   0x0010
 #define KERNEL_DS   0x0018
@@ -16,7 +16,7 @@
 #define USER_DS     0x002B
 #define KERNEL_TSS  0x0030
 #define KERNEL_LDT  0x0038
-=======
+
 /* Segment selector values (bytes 3-15 are index # in the GDT, byte 2 is TI flag, bytes 0-1 are RPL) 
    Entry #0 is always empty in GDT, 1 is also unused, which is why it starts at index #2
    To get base address in GDT, take index # * 8 (because 8 bytes per entry in GDT) + base address of GDT (found in GDTR register)
@@ -27,7 +27,6 @@
 #define USER_DS     0x002B // 101, RPL = 3
 #define KERNEL_TSS  0x0030 // 110
 #define KERNEL_LDT  0x0038 // 111
->>>>>>> detached
 
 /* Size of the task state segment (TSS) */
 #define TSS_SIZE    104

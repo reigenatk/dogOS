@@ -22,10 +22,10 @@ typedef struct jump_table_fd {
 } jump_table_fd;
 
 jump_table_fd rtc_jump_table = {
-    read_RTC,
-    write_RTC,
-    open_RTC,
-    close_RTC
+  read_RTC,
+  write_RTC,
+  open_RTC,
+  close_RTC
 };
 
 typedef struct file_descriptor {

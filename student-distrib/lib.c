@@ -163,6 +163,19 @@ int32_t puts(int8_t* s) {
     return index;
 }
 
+void bluescreen() {
+    int i;
+    for (i = 0; i < NUM_ROWS * NUM_COLS; i++)
+    {
+        video_mem[i << 1 + 1]  = 0x11;
+    }
+}
+
+void change_write_head(uint32_t x, uint32_t y) {
+    screen_x = x;
+    screen_y = y;
+}
+
 /* void putc(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
@@ -248,8 +261,6 @@ uint32_t strlen(const int8_t* s) {
     return len;
 }
 
-<<<<<<< HEAD
-=======
 void change_write_head(int8_t new_x, int8_t new_y) {
     screen_x = new_x;
     screen_y = new_y;
@@ -266,7 +277,6 @@ void do_backspace() {
     *(uint8_t *)(video_mem + ((idx) << 1)) = ' ';
 }
 
->>>>>>> detached
 /* void* memset(void* s, int32_t c, uint32_t n);
  * Inputs:    void* s = pointer to memory
  *          int32_t c = value to set memory to

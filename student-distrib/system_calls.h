@@ -33,6 +33,14 @@ written, or -1 on failure.
 */
 int32_t write(int32_t fd, const void* buf, int32_t nbytes);
 
+/*
+The open system call provides access to the file system. T
+he call should find the directory entry corresponding to the
+named file, allocate an unused file descriptor, and set up any data 
+necessary to handle the given type of file (directory,
+RTC device, or regular file). If the named file does not exist or 
+no descriptors are free, the call returns -1.
+*/
 int32_t open(const uint8_t* filename);
 
 int32_t close(int32_t fd);

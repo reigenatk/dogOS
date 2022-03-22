@@ -32,7 +32,7 @@ The RTC interrupt rate should be set to a default value of
 2 Hz (2 interrupts per second) when the RTC device is opened.
 For simplicity, RTC interrupts should remain on at all times.
 */
-int32_t open_RTC(const uint8 t* filename) {
+int32_t open_RTC(const uint8_t* filename) {
   // just call init_RTC()
   set_RTC_rate(2); 
   init_RTC();
@@ -52,11 +52,6 @@ int32_t read_RTC(int32_t fd, void* buf, int32_t nbytes) {
   return 0;
 }
 
-uint32_t find_rate_value(uint32_t desired_rate) {
-  // if the passed in interrupt rate is not a power of 2, then return -1
-
-}
-
 /*
 In the case of the RTC, the system call should always accept only a 4-byte
 integer specifying the interrupt rate in Hz, 
@@ -73,7 +68,7 @@ int32_t write_RTC(int32_t fd, const void* buf, int32_t nbytes) {
   return nbytes;
 }
 
-int32_t close_RTC() {
+int32_t close_RTC(int32_t fd) {
   // just reset RTC frequency 
   set_RTC_rate(2); 
   return 0;

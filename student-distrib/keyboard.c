@@ -95,6 +95,7 @@
 uint8_t is_caps_lock_toggled = 0;
 uint8_t is_shift_key_pressed = 0;
 uint8_t is_ctrl_key_pressed = 0;
+uint8_t is_alt_pressed = 0;
 
 #define NUM_KEYS 70
 #define KEYBOARD_IRQ 1
@@ -105,8 +106,10 @@ uint32_t non_displayable_keys[20] = {KEY_RESERVED, KEY_ESC, KEY_BACKSPACE, KEY_L
                                      KEY_LEFTALT, KEY_CAPSLOCK, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10,
                                      KEY_NUMLOCK, KEY_SCROLLLOCK};
 
+// initialize all of the keys that are writable to the screen 
+// (letters + numbers + some chars)
 void init_key_vals() {
-  // initialize all of the keys that are writable to the screen (letters + numbers + some chars)
+  
   keys[KEY_1] = (key) {'1', '1', '!', '!', 0x01};
   keys[KEY_2] = (key) {'2', '2', '@', '@', 0x01};
   keys[KEY_3] = (key) {'3', '3', '#', '#', 1};
@@ -222,6 +225,12 @@ __attribute__((interrupt)) void keyboard_INT() {
   else if (keycode == KEY_CAPSLOCK) {
     is_caps_lock_toggled = !is_caps_lock_toggled;
   }
+  else if (keycode == KEY_LEFTALT) {
+    is_alt_pressed = 1;
+  }
+  else if (keycode == KEY_LEFTALT + RELEASE_CODE) {
+    is_alt_pressed = 0;
+  }
   else if (keycode == KEY_BACKSPACE) {
     do_backspace();
   }
@@ -273,11 +282,24 @@ __attribute__((interrupt)) void keyboard_INT() {
         goto done;
       }
 
-      putc(key_char);
+      if (keycode == KEY_ENTER) {
+        // then its a newline, so print out line buffer
+        line_buffer[line_buffer_idx] = '\n';
+        
+      }
+
+      // putc(key_char);
+
+      // try adding to the line buffer (minus 1 because newline is at end)
+      if (line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
+        line_buffer[line_buffer_idx] = key_char;
+        line_buffer_idx++;
+      }
     }
   }
 
 done:
+  // re-enable interrupts and also interrupt controller keyboard vector
   enable_irq(KEYBOARD_IRQ);
   sti();
 }

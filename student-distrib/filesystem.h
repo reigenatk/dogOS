@@ -3,7 +3,7 @@
 #include "types.h"
 #include "lib.h"
 
-#define MAX_OPEN_FILES 8 
+
 #define MAX_FILE_NAME_LENGTH 32
 #define BYTES_RESERVED 24
 #define MAX_DATA_BLOCKS_PER_INODE 1023 // (4kB / 4B) - 1
@@ -21,13 +21,6 @@ typedef struct dentry_t {
   uint32_t inode_number;
   uint8_t reserved[BYTES_RESERVED];
 } dentry_t;
-
-typedef struct file_descriptor {
-  uint32_t jump_table;
-  uint32_t inode;
-  uint32_t file_position;
-  uint32_t flags;
-} file_descriptor;
 
 typedef struct inode_block {
   uint32_t length_in_bytes;
