@@ -51,6 +51,8 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t* dentry);
 uint32_t read_dentry_by_index (uint32_t index, dentry_t* dentry);
 uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length);
 
+uint32_t read_data_by_filename(uint8_t *fname, uint8_t *buf, uint32_t length);
+
 void init_filesystem(uint32_t filesystem_start_address);
 
 // for the syscalls

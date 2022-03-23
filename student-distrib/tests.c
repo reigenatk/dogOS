@@ -204,7 +204,7 @@ int read_dentry_test() {
 	if (ret2 == -1) {
 		result = FAIL;
 	}
-	printf("filename: %s filetype: %d inode: %d reserved: %s", 
+	printf("filename: %s filetype: %d inode: %d reserved: %s\n", 
 	t2.file_name, t2.file_type, t2.inode_number, t2.reserved);
 
 	// check if the filenames are the same
@@ -213,11 +213,15 @@ int read_dentry_test() {
 		result = FAIL;
 	}
 
-	// int i;
-	// for (i = 0; i < 17; i++) {
-	// 	uint32_t ret = read_dentry_by_index(i, &t);
-	// 	printf("name: %s, size: %s bytes\n", t.file_name, get_file_size(t.inode_number));
-	// }
+	// print all filenames + sizes as suggested in test
+	int i;
+	for (i = 0; i < 17; i++) {
+		uint32_t ret = read_dentry_by_index(i, &t);
+		printf("name: %s, size: %d bytes, inode: %d\n", t.file_name, get_file_size(t.inode_number), t.inode_number);
+	}
+
+	
+
 	return result;
 }
 
@@ -225,8 +229,11 @@ int read_data_test() {
 	TEST_HEADER;
 	int result = PASS;
 	uint8_t buffer[6224];
+
+	// inode 40 is the sigtest ELF file
 	uint32_t ret = read_data(40, 0, buffer, 6224);
-	if (ret == -1) {
+	uint8_t correct_string[] = "2017-04-24, 16:44:13";
+	if (ret == -1 || strncmp(buffer, correct_string, strlen(correct_string))) {
 
 		result = FAIL;
 	}
@@ -234,19 +241,29 @@ int read_data_test() {
 	// this doesn't work, IDK why, keeps printing "S"
 	// printf("%s\n", buffer);
 
-	// int i;
-	// for (i = 0; i < strlen(buffer); i++) {
-	// 	putc(buffer[i]);
-	// }
+	// print out random bytes of some executable as suggested
+	int i;
+	for (i = 0; i < strlen(buffer); i++) {
+		putc(buffer[i]);
+	}
 
-	// test going over the limit
+	// test going over the limit with offset
 	uint8_t buffer2[6224];
-	uint32_t ret2 = read_data(40, 0, buffer2, 10000);
+	uint32_t ret2 = read_data(40, 10000, buffer2, 10);
 	if (ret2 != -1) {
-
+		
 		result = FAIL;
 		
 	}
+
+	// test reading data given a filename
+	uint8_t buffer3[1000];
+	uint8_t name[5] = "hello";
+	read_data_by_filename(name, buffer3, 100);
+	for (i = 0; i < strlen(buffer3); i++) {
+		putc(buffer3[i]);
+	}
+	
 
 	return result;
 }

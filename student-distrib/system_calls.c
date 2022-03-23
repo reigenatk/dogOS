@@ -8,9 +8,114 @@ int32_t sys_halt(uint8_t status) {
   printf("hi");
   return 0x20;
 }
+
+/*
+The execute system call attempts to load and execute a new program, handing off the processor to the new program
+until it terminates. The command is a space-separated sequence of words. The first word is the file name of the
+program to be executed, and the rest of the command—stripped of leading spaces—should be provided to the new
+program on request via the getargs system call. The execute call returns -1 if the command cannot be executed,
+for example, if the program does not exist or the filename specified is not an executable, 256 if the program dies by an
+exception, or a value in the range 0 to 255 if the program executes a halt system call, in which case the value returned
+is that given by the program’s call to halt.
+
+*/
 int32_t sys_execute(const uint8_t* command) {
-  printf("hi");
-  return 0x20;
+
+  // no interrupts
+  cli();
+
+  // parse the program name + Arguments
+  uint8_t program_name[MAX_FILE_NAME_LENGTH+1];
+  uint8_t arguments[LINE_BUFFER_MAX_SIZE+1];
+
+  parse_command(program_name, arguments, command);
+  // printf("program name: %s, args: %s", program_name, arguments);
+
+  // look for program's dentry_t struct
+  dentry_t program;
+  if (read_dentry_by_name(program_name, &program) == -1) {
+    // program not found
+    return -1;
+  }
+
+  // check that this is an executable
+  /*
+  In this file, a header that occupies the first 40 bytes gives information 
+  for loading and starting
+  the program. The first 4 bytes of the file represent a “magic number” 
+  that identifies the file as an executable. These
+  bytes are, respectively, 0: 0x7f; 1: 0x45; 2: 0x4c; 3: 0x46. If the 
+  magic number is not present, the execute system
+  call should fail. 
+  */
+  uint8_t first_fourty_bytes[40];
+  if (read_data(program.inode_number, 0, first_fourty_bytes, 40) == -1) {
+    return -1;
+  }
+  if (first_fourty_bytes[0] != 0x7f || first_fourty_bytes[1] != 0x45 
+  || first_fourty_bytes[2] != 0x4c || first_fourty_bytes[3] != 0x46) {
+    return -1;
+  }
+
+  /*
+  The other important bit of information that you need 
+  to execute programs is the entry point into the
+  program, i.e., the virtual address of the first 
+  instruction that should be executed. This information is stored as a 4-byte
+  unsigned integer in bytes 24-27 of the executable, 
+  and the value of it falls somewhere near 0x08048000 
+  for all programs we have provided to you. When processing 
+  the execute system call, your code should make a note of the entry
+  point, and then copy the entire file to memory starting 
+  at virtual address 0x08048000. It then must jump to the entry
+  point of the program to begin execution.
+  */
+  uint32_t entry_point = *((uint32_t *)first_fourty_bytes + 24);
+  printf("program entry: 0x%x", entry_point);
+  uint32_t new_pid = get_new_process_id();
+  if (new_pid == -1) {
+    return -1;
+  }
+  task* t = init_task(new_pid);
+
+  // copy argument information and process ID into the current task.
+  strncpy(t->arguments, arguments, strlen(arguments));
+  t->pid = pid;
+
+  /*
+  The way to get this
+  working is to set up a single 4 MB page directory entry that maps virtual address 0x08000000 (128 MB) to the right
+  physical memory address (either 8 MB or 12 MB). Then, the program image must be copied to the correct offset
+  (0x00048000) within that page.
+  */
+  
+  uint32_t start_physical_address = calculate_task_physical_address(pid);
+  virtual_to_physical_remap_directory(PROGRAM_IMAGE_VIRTUAL_ADDRESS, start_physical_address, 1, 1);
+  
+  // copy the executable to the task's page in memory at offset 0x48000. Since we just mapped the memory, we can 
+  // now virtual address 0x08048000 will be translated into 0x800000 + 0x48000 
+  // AKA 8MB + 48*4KB physical, or a 0x48000 offset into the right page. Just as required.
+  // Also we set length to be a really big number, I know from printing out that largest 
+  // exe is 5277 bytes, so 10k should work. Because read_data() will exit if done reading.
+  if (read_data(program.inode_number, 0, (uint8_t*) (PROGRAM_IMAGE_VIRTUAL_ADDRESS + OFFSET_WITHIN_PAGE), 10000) == -1) {
+    return -1;
+  }
+
+  // the important fields are SS0 and
+  // ESP0. These fields contain the stack segment and stack pointer that the x86 will put into SS and ESP when performing
+  // a privilege switch from privilege level 3 to privilege level 0 (for example, when a user-level program makes a system
+  // call, or when a hardware interrupt occurs while a user-level program is executing). These fields must be set to point to
+  // the kernel’s stack segment and the process’s kernel-mode stack, respectively. Note that when you start a new process,
+  // just before you switch to that process and start executing its user-level code, you must alter the TSS entry to contain
+  // its new kernel-mode stack pointer. This way, when a privilege switch is needed, the correct stack will be set up by the
+  // x86 processor
+  tss.ss0 = KERNEL_DS;
+  tss.esp0 = calculate_task_pcb_pointer(new_pid) - TASK_STACK_SIZE;
+
+  // use 'the iret method' from the above link
+  change_task(entry_point);
+
+  return 0;
 }
 
 /*
@@ -220,8 +325,8 @@ video page located < 4MB and pass that address.
 */
 int32_t sys_vidmap(uint8_t** screen_start) {
   // we get to define where the text-mode video memory maps into userspace
-  // let's put it at 0x70000000
-  uint32_t pre_set_virtual_address = 0x70000000;
+  // let's put it at 0x8000000
+  uint32_t pre_set_virtual_address = 0x8000000 ;
 
   // check to see if the address passed in is within the address range of this task
   // address range of this task can be calculated if we find the process id, and then 
@@ -236,6 +341,16 @@ int32_t sys_vidmap(uint8_t** screen_start) {
   }
 
   // now map a new 4KB page to go from our virtual address to our physical  
+  // so put in english, we get to access the video memory via 0x8000000 
+  // because we make a page directory entry + page table entry that maps 
+  // this virtual address to this physical address. You can run through the address translation 
+  // to verify this is the case
+
+  // we arbitrarily choose 0x09000000, since we know program memory is at 0x08000000
+  // so this is above any address that a program would use (0x08000000 - 0x08400000)
+ //  and won't interfere with any previous mappings we have already.
+
+  virtual_to_physical_remap_usertable((uint32_t) 0x09000000, (uint32_t) VIDEO, 1);
 }
 int32_t sys_set_handler(int32_t signum, void* handler_address) {
   printf("hi");

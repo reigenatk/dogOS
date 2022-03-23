@@ -3,10 +3,6 @@
 
 #include "lib.h"
 
-#define NUM_COLS    80
-#define NUM_ROWS    25
-#define ATTRIB      0x7
-
 static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
@@ -217,8 +213,8 @@ void putc(uint8_t c) {
             screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
         }
     }
+    change_blinking_cursor_pos(screen_x, screen_y);
 }
-
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert
@@ -293,6 +289,20 @@ void change_write_head(int8_t new_x, int8_t new_y) {
     screen_y = new_y;
 }
 
+void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y) {
+    uint32_t len = strlen(buf);
+    int i;
+    char *addr;
+    for (i = 0; i < len; i++) {
+        addr = ((char *)VIDEO + ((new_x + NUM_COLS * new_y) << 1));
+        *addr = buf[i];
+        new_x++;
+        if (new_x == NUM_COLS) {
+            break;
+        }
+    }
+}
+
 void do_backspace() {
     if (screen_x == 0) {
         // nothing to do
@@ -344,6 +354,17 @@ void* memset(void* s, int32_t c, uint32_t n) {
             : "edx", "memory", "cc"
     );
     return s;
+}
+
+// https://wiki.osdev.org/Text_Mode_Cursor
+
+void change_blinking_cursor_pos(int32_t x, int32_t y) {
+	uint16_t pos = y * NUM_COLS + x;
+ 
+	outb(0x0F, 0x3D4);
+	outb((uint8_t) (pos & 0xFF), 0x3D5);
+	outb( 0x0E, 0x3D4);
+	outb((uint8_t) ((pos >> 8) & 0xFF), 0x3D5);
 }
 
 /* void* memset_word(void* s, int32_t c, uint32_t n);

@@ -6,3 +6,8 @@ This was really strange because
 
 2. Had issue where RTC would only interrupt once and then never again. I deduced that this was because my 
 send_eoi wasn't working, sure enough I was sending the wrong bytes. 
+
+3. uint8_t name[] = "hello"; instead of uint8_t name[5] = "hello"; with the first one working 
+and the second one not. This was when writing tests. Not sure what the deal is, but 
+the second one wasn't passing the string properly to the tests and hence causing a lot of 
+problems.

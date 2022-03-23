@@ -4,8 +4,10 @@
 #include "filesystem.h"
 #include "RTC.h"
 #include "keyboard.h"
-#define MAX_OPEN_FILES 8
 
+// defined by MP3
+#define MAX_OPEN_FILES 8
+#define MAX_TASKS 6
 
 /*
 The final bit of per-task state that needs to be allocated is a kernel stack 
@@ -74,6 +76,11 @@ typedef struct task {
   uint32_t pid; // the process ID tells us all sorts of into about where the process is in memory
   uint32_t esp;
   uint8_t arguments[128];
+  uint32_t parent_process_number;
+
+  // // page tables and directories are of type uint32_t, so we need pointers to that
+  // uint32_t* page_table_address;
+  // uint32_t* page_directory_address;
 
 } task;
 
@@ -86,9 +93,18 @@ corresponding to the figure shown on the right.
 In other words, each task has its own page directory!
 */
 
-extern task cur_task;
 
-void init_task();
+
+extern uint32_t running_process_ids[MAX_TASKS];
+
+task *get_task_from_pid(uint32_t pid);
+
+uint32_t get_new_process_id();
+
+
+// Given a PID, this creates a new task struct for this process and initializes stdin, stdout file
+// descriptors for it 
+task* init_task(uint32_t pid);
 
 uint32_t find_unused_fd();
 
@@ -109,9 +125,10 @@ loaded at physical 8 MB, and the second user-level program,
 when it is executed by the shell, should be loaded at
 physical 12 MB.
 */
-uint32_t calculate_task_physical_address(uint32_t task_num);
+uint32_t calculate_task_physical_address(uint32_t pid);
 
-uint32_t calculate_task_pcb_pointer(uint32_t task_num);
+uint32_t calculate_task_pcb_pointer(uint32_t pid);
 
+task *get_task_from_pid(uint32_t pid);
 
 #endif

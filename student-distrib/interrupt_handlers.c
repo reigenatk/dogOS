@@ -8,6 +8,14 @@
 // use a macro to mass produce a bunch of functions
 //spin infinitely otherwise this exception handler will get spam called
 // also use #, the alternative operator, to dereference names of macro arguments
+
+// cr2: Contains a value called Page Fault Linear Address (PFLA). When a page fault occurs, 
+// the address the program attempted to access is stored in the CR2 register.
+
+// cr3: CR3 enables the processor to translate linear addresses into physical addresses 
+// by locating the page directory and page tables for the current task. 
+// Typically, the upper 20 bits of CR3 become the page directory base register (PDBR), 
+// which stores the physical address of the first page directory
 #define GENERIC_INTERRUPT_HANDLER(name_of_handler) \
   void name_of_handler()                           \
   {                                                \

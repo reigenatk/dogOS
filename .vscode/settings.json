@@ -11,6 +11,10 @@
     "paging.h": "c",
     "system_calls.h": "c",
     "chrono": "c",
-    "xlocale": "c"
+    "xlocale": "c",
+    "atomic": "c",
+    "iosfwd": "c",
+    "xlocbuf": "c",
+    "xiosbase": "c"
   }
 }

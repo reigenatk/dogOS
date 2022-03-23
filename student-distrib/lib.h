@@ -10,6 +10,13 @@
 #define VIDEO       0xB8000 // about 736KB (753644)
 #define WINDOWS_BLUE 0x11
 
+#define RTC_X 75
+#define RTC_Y 3
+
+#define NUM_COLS    80
+#define NUM_ROWS    25
+#define ATTRIB      0x7
+
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
 int32_t puts(int8_t *s);
@@ -31,8 +38,17 @@ int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 int32_t bad_userspace_addr(const void* addr, int32_t len);
 int32_t safe_strncpy(int8_t* dest, const int8_t* src, int32_t n);
 
+// our functions
+// text mode reference: https://wiki.osdev.org/Printing_To_Screen
 void change_write_head(int8_t new_x, int8_t new_y);
+
+// this is like puts except without change write head which is annoying sometimes
+void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y);
 void bluescreen();
+void change_blinking_cursor_pos(int32_t x, int32_t y);
+
+// parses a received string into two buffers, command and argument
+void parse_command(int8_t* program_name, int8_t* arguments, int8_t* command)
 
 /* Port read functions */
 /* Inb reads a byte and returns its value as a zero-extended 32-bit

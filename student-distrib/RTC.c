@@ -116,6 +116,16 @@ __attribute__((interrupt)) void RTC_interrupt_handler() {
   }
 
   rtc_test_counter++;
+  // write to vid mem
+  int8_t buf[10];
+  int8_t msg[] = "RTC:";
+  itoa(rtc_test_counter, buf, 10);
+  // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
+  // *addr = buf[0];
+  print_at_coordinates(msg, RTC_X, RTC_Y - 1);
+
+  print_at_coordinates(buf, RTC_X, RTC_Y);
+
   outb(0x0C, RTC_IO_PORT);
   inb(CMOS_IO_PORT);
 

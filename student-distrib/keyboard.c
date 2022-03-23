@@ -253,7 +253,7 @@ __attribute__((interrupt)) void keyboard_INT() {
       }
       // press 3 to test interrupts
       if (keycode == KEY_3) {
-        halt(0x21);
+        execute("  hello hi bye  ");
       }
 
       uint8_t key_char = 0;
@@ -289,6 +289,7 @@ __attribute__((interrupt)) void keyboard_INT() {
       }
 
       putc(key_char);
+
 
       // try adding to the line buffer (minus 1 because newline is at end)
       if (line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {

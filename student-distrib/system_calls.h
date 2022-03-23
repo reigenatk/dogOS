@@ -7,11 +7,15 @@
 #include "keyboard.h"
 #include "task.h"
 #include "paging.h"
+#include "x86_desc.h"
 
 void syscall_interrupt_handler(uint32_t syscall_no, uint32_t arg1, 
   uint32_t arg2, uint32_t arg3);
 
 void test_syscall();
+
+// special function to change from ring 0 to ring 3 (in .S file)
+void change_task(uint32_t entry);
 
 // make a bunch of global system calls for usage
 // Prototypes appear below. Unless otherwise specified, 
@@ -22,9 +26,7 @@ int32_t execute(const uint8_t* command);
 
 int32_t read(int32_t fd, void* buf, int32_t nbytes);
 
-
 int32_t write(int32_t fd, const void* buf, int32_t nbytes);
-
 
 int32_t open(const uint8_t* filename);
 

@@ -1,5 +1,7 @@
-#include "ece391sysnum.h"
 #define ASM 1
+
+#include "ece391sysnum.h"
+#include "x86_desc.h"
 
 .data 
 .globl syscall_handler_wrapper
@@ -81,3 +83,46 @@ return:
 
 jump_table:
 	.long sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, sys_set_handler, sys_sigreturn
+
+# Refer to: https://wiki.osdev.org/Getting_to_Ring_3
+# or this:
+# Kernel code executes at privilege level 0, while user-level code must execute at privilege level 3. The x86 processor
+# does not allow a simple function call from privilege level 0 code to privilege level 3, so you must use an x86-specific
+# convention to accomplish this privilege switch.
+
+# The convention to use is the IRET instruction. Read the ISA reference manual for the details of this instruction. You
+# must set up the correct values for the user-level EIP, CS, EFLAGS, ESP, and SS registers on the kernel-mode stack, and
+# then execute an IRET instruction. The processor will pop the values off the stack into those registers, and by doing
+# this, will perform a privilege switch into the privilege level specified by the low 2 bites of the CS register. The values
+# for the CS and SS registers must point to the correct entries in the Global Descriptor Table that correspond to the
+# user-mode code and stack segments, respectively. 
+
+# The EIP you need to jump to is the entry point from bytes 24-27 of
+# the executable that you have just loaded. Finally, you need to set up a user-level stack for the process. For simplicity,
+# you may simply set the stack pointer to the bottom of the 4 MB page already holding the executable image. Two final
+# bits: the DS register must be set to point to the correct entry in the GDT for the user mode data segment (USER DS)
+# before you execute the IRET instruction (conversely, when an entry into the kernel happens, for example, through a
+# system call, exception, or interrupt, you should set DS to point to the KERNEL DS segment). Finally, you will need to
+# modify the TSS; this is explained in Appendix E.
+.globl change_task
+change_task:
+	# no need for function prologue
+	# it goes ds, esp, eflags, cs, entry point
+
+	xorl $eax, $eax
+	push $USER_DS
+
+	# stack pointer points to the bottom of the 4MB page created for the user task
+	# since virtual mem 0x8000000 points to the top of the right page (thanks to the page remapping we did earlier), 
+	# we add 4MB aka 0x40000 which will get us to the bottom. Then the stack grows up.
+	push $0x8400000 
+	pushfl
+	pop %eax 
+	orl $0x0020, %eax # set interrupt flag to 1, enables interrupts
+	push %eax # push back onto stack
+	push $USER_CS
+
+	# push entry point
+	mov 4(%esp), %eax 
+	push %eax
+	iret

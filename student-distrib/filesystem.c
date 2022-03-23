@@ -72,7 +72,7 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
   // printf("%d", length_of_data);
 
   // if we're asking to start past the length of data then obviously this is wrong
-  if (offset < 0 || offset >= length_of_data || length < 0 || length > length_of_data) {
+  if (offset < 0 || offset >= length_of_data) {
     return -1;
   }
 
@@ -165,6 +165,19 @@ void init_filesystem(uint32_t filesystem_start_address) {
   file_names_idx = 0;
 
 
+}
+
+// for handin
+uint32_t read_data_by_filename(uint8_t* fname, uint8_t* buf, uint32_t length) {
+  // find inode
+  dentry_t t;
+  uint32_t a = read_dentry_by_name((const uint8_t*) fname, &t);
+  if (a == -1) {
+    return -1;
+  }
+  uint32_t inode = t.inode_number;
+  // pass it along
+  read_data(inode, 0, buf, length);
 }
 
 int32_t open_file(const uint8_t* filename) {
