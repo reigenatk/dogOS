@@ -26,7 +26,7 @@
     change_write_head(0, 0);                       \    
     printf("%s", #name_of_handler);                \
     change_write_head(40, 0);                      \     
-    printf("cr2: %x, cr3: %x", cr2, cr3);          \
+    printf("cr2: 0x%x, cr3: 0x%#x", cr2, cr3);        \
     sti();                                         \
     while(1); \
   }

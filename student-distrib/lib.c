@@ -3,7 +3,6 @@
 
 #include "lib.h"
 
-#define VIDEO       0xB8000
 #define NUM_COLS    80
 #define NUM_ROWS    25
 #define ATTRIB      0x7
@@ -164,16 +163,31 @@ int32_t puts(int8_t* s) {
 }
 
 void bluescreen() {
-    int i;
+    uint32_t i;
     for (i = 0; i < NUM_ROWS * NUM_COLS; i++)
     {
-        video_mem[i << 1 + 1]  = 0x11;
+        *(uint8_t *)(video_mem + (i << 1) + 1) = WINDOWS_BLUE;
     }
 }
 
-void change_write_head(uint32_t x, uint32_t y) {
-    screen_x = x;
-    screen_y = y;
+
+void scroll_up() {
+    int i, j;
+    change_write_head(0, NUM_ROWS - 1);
+    for (i = 0; i < NUM_ROWS - 1; i++)
+    {
+        // move everything one line up
+        for (j = 0; j < NUM_COLS; j++) {
+            uint32_t idx = i * NUM_COLS + j;
+            uint32_t one_down = idx + NUM_COLS;
+            *(uint8_t *)(video_mem + (idx << 1)) = *(uint8_t *)(video_mem + (one_down << 1));
+        }
+    }
+    // bottom line should be clear
+    for (i = 0; i < NUM_COLS; i++) {
+        uint32_t idx = NUM_COLS * (NUM_ROWS - 1) + i;
+        *(uint8_t *)(video_mem + (idx << 1)) = ' ';
+    }
 }
 
 /* void putc(uint8_t c);
@@ -182,16 +196,29 @@ void change_write_head(uint32_t x, uint32_t y) {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        screen_y++;
-        screen_x = 0;
+        if (screen_y = NUM_ROWS - 1) {
+            // then we were at last line, scroll up
+            scroll_up();
+        }
+        else {
+            screen_y++;
+            screen_x = 0;
+        }
     } else {
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
-        screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+        if (screen_x == NUM_COLS - 1 && screen_y == NUM_ROWS - 1) {
+            // if we are in bottom right corner then scroll up
+            scroll_up();
+        }
+        else {
+            screen_x++;
+            screen_x %= NUM_COLS;
+            screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+        }
     }
 }
+
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert

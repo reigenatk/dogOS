@@ -285,10 +285,10 @@ __attribute__((interrupt)) void keyboard_INT() {
       if (keycode == KEY_ENTER) {
         // then its a newline, so print out line buffer
         line_buffer[line_buffer_idx] = '\n';
-        
+
       }
 
-      // putc(key_char);
+      putc(key_char);
 
       // try adding to the line buffer (minus 1 because newline is at end)
       if (line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
@@ -302,4 +302,8 @@ done:
   // re-enable interrupts and also interrupt controller keyboard vector
   enable_irq(KEYBOARD_IRQ);
   sti();
+}
+
+key interpret_scancode(uint8_t keycode) {
+  return keys[keycode];
 }

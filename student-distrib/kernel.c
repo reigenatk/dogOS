@@ -85,7 +85,6 @@ void entry(unsigned long magic, unsigned long addr) {
     }
 
     /* Construct an LDT entry in the GDT */
-=======
     // /* Are mmap_* valid? */
     // if (CHECK_FLAG(mbi->flags, 6)) {
     //     memory_map_t *mmap;
@@ -184,6 +183,8 @@ void entry(unsigned long magic, unsigned long addr) {
     // paging
     printf("Initializing Paging");
     setup_paging();
+
+    // init_task();
 
     /* Enable interrupts */
     /* Do not enasble the following until after you have set up your

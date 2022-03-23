@@ -2,7 +2,7 @@
 #define FILESYS_H
 #include "types.h"
 #include "lib.h"
-
+#include "task.h"
 
 #define MAX_FILE_NAME_LENGTH 32
 #define BYTES_RESERVED 24
@@ -52,5 +52,33 @@ uint32_t read_dentry_by_index (uint32_t index, dentry_t* dentry);
 uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length);
 
 void init_filesystem(uint32_t filesystem_start_address);
+
+// for the syscalls
+int32_t open_file(const uint8_t* filename);
+
+/* In the case of a file, data should be read to the end of the file or the 
+end of the buffer provided, whichever occurs
+sooner.*/
+int32_t read_file(int32_t fd, void* buf, int32_t nbytes);
+
+int32_t write_file(int32_t fd, const void* buf, int32_t nbytes);
+int32_t close_file(int32_t fd);
+
+int32_t open_dir(const uint8_t* filename);
+
+int32_t get_file_size(uint32_t inode_num);
+
+// index for the filenames
+uint32_t file_names_idx;
+/*In the case of reads to the directory, only the filename should be provided 
+(as much as fits, or all 32 bytes), and
+subsequent reads should read from successive directory entries until the last 
+is reached, at which point read should
+repeatedly return 0. */
+int32_t read_dir(int32_t fd, void* buf, int32_t nbytes);
+
+
+int32_t write_dir(int32_t fd, const void* buf, int32_t nbytes);
+int32_t close_dir(int32_t fd);
 
 #endif

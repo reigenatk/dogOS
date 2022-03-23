@@ -1,6 +1,7 @@
 #include "RTC.h"
 #include "i8259.h"
 #include "lib.h"
+#include "tests.h"
 
 // RTC is IRQ8, irq vector 0x28
 // info from https://wiki.osdev.org/RTC
@@ -11,10 +12,7 @@
 #define RTC_REG_B 0x8B
 #define RTC_REG_C 0x8C
 
-
-
-
-
+uint8_t is_running;
 
 void init_RTC() {
 
@@ -61,7 +59,7 @@ int32_t write_RTC(int32_t fd, const void* buf, int32_t nbytes) {
   if (nbytes != 4) {
     return -1;
   }
-  int ret = set_RTC_rate((uint32_t *)buf);
+  int ret = set_RTC_rate(*((uint32_t *)buf));
   if (ret == -1) {
     return -1;
   }
@@ -81,7 +79,7 @@ int is_power_of_two(uint32_t rate) {
     if (rate%2 != 0) {
       return 0;
     }
-    rate >> 1;
+    rate >>= 1;
     ret++;
   }
   return ret;
@@ -97,7 +95,7 @@ int set_RTC_rate(uint32_t rate_num) {
   int power_of_two = is_power_of_two(rate_num);
   if (rate_num < 2 || rate_num > 32768 || !power_of_two)
   {
-    return;
+    return -1;
   }
   rate_num = (16 - power_of_two);
   outb(RTC_REG_A, RTC_IO_PORT); // select register A, disable NMI
@@ -106,6 +104,7 @@ int set_RTC_rate(uint32_t rate_num) {
   outb((prev & 0xF0) | rate_num, CMOS_IO_PORT);
 
   sti();
+  return 0;
 }
 
 // function should call test_interrupts every time it receives an interrupt
@@ -115,6 +114,8 @@ __attribute__((interrupt)) void RTC_interrupt_handler() {
   if (is_running == 1) {
     test_interrupts();
   }
+
+  rtc_test_counter++;
   outb(0x0C, RTC_IO_PORT);
   inb(CMOS_IO_PORT);
 

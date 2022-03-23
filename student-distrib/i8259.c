@@ -2,7 +2,8 @@
 #include "lib.h"
 
 /* Interrupt masks to determine which interrupts are enabled and disabled */
-/* Use these interrupt masks to determine which interrupts are enabled and disabled. Let 1 mean interrupt disabled, 0 means enabled */
+/* Use these interrupt masks to determine which interrupts are enabled and disabled. 
+Let 1 mean interrupt disabled, 0 means enabled */
 uint8_t master_mask; /* IRQs 0-7  */
 uint8_t slave_mask;  /* IRQs 8-15 */
 #define SLAVE_PIC_LINE 0x2
@@ -68,7 +69,7 @@ void enable_irq(uint32_t irq_num) {
     // master
     unsigned int masked = master_mask & (1 << irq_num);
     if (masked > 0) {
-      // then its currently masked, but we want it off
+      // then its currently masked, but we want it set to 0 to indicate unmasked
       master_mask = turn_bit_to_zero(master_mask, irq_num);
       outb(master_mask, MASTER_8259_PORT + 1);
     }

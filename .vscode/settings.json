@@ -7,6 +7,10 @@
     "rtc.h": "c",
     "stdint.h": "c",
     "fcntl.h": "c",
-    "filesystem.h": "c"
+    "filesystem.h": "c",
+    "paging.h": "c",
+    "system_calls.h": "c",
+    "chrono": "c",
+    "xlocale": "c"
   }
 }

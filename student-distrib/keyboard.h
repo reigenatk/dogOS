@@ -14,7 +14,7 @@ void keyboard_INT();
 uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
 
 // this always points to where the next character should go..
-uint32_t line_buffer_idx = 0;
+uint32_t line_buffer_idx;
 
 // we need both uppercase_char and shift_char because caps lock doesn't do the same thing as shift
 typedef struct key {

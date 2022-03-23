@@ -3,7 +3,6 @@
 #define SIXTY_FOUR_BYTES 0x40
 #define FOUR_KB 0x1000
 
-
 /*
 When successful, the first two calls fill in the dentry t
 block passed as their second argument with the file name, file
@@ -73,7 +72,7 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
   // printf("%d", length_of_data);
 
   // if we're asking to start past the length of data then obviously this is wrong
-  if (offset < 0 || offset >= length_of_data) {
+  if (offset < 0 || offset >= length_of_data || length < 0 || length > length_of_data) {
     return -1;
   }
 
@@ -136,6 +135,10 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
 
 }
 
+int32_t get_file_size(uint32_t inode_num) {
+  return inodes[inode_num].length_in_bytes;
+}
+
 void init_filesystem(uint32_t filesystem_start_address) {
   // each one is 4 Bytes
   num_directory_entries = *((uint32_t*) filesystem_start_address);
@@ -159,9 +162,62 @@ void init_filesystem(uint32_t filesystem_start_address) {
     offset += FOUR_KB;
   }
 
-  // read in all data blocks 
-
-  // get pointer to dblocks
+  file_names_idx = 0;
 
 
+}
+
+int32_t open_file(const uint8_t* filename) {
+  return 0;
+}
+int32_t read_file(int32_t fd, void* buf, int32_t nbytes) {
+  if (fd < 0 || fd > 7) {
+    return -1;
+  }
+
+  // here I used 1 hardcode since we dont have scheduler but usually this value would be
+  // the pid of the current running task in the scheduler file
+  task* PCB_data = (task*) calculate_task_pcb_pointer(1);
+
+  // all we have is a file descriptor number but we need an inode to use read_data
+  // we can get that inode by checking what task we're using, since we know inode data
+  // is stored in the file descriptor array for that task
+
+  uint32_t inode_value = PCB_data->fds[fd].inode;
+  uint32_t offset_into_file = PCB_data->fds[fd].file_position;
+  uint32_t num_bytes_read = read_data(inode_value, offset_into_file, buf, nbytes);
+  if (num_bytes_read == -1) {
+    return -1;
+  }
+
+  // increase file position
+  PCB_data->fds[fd].file_position += num_bytes_read;
+  return num_bytes_read;
+}
+int32_t write_file(int32_t fd, const void* buf, int32_t nbytes) {
+  return -1; // read only fs
+}
+int32_t close_file(int32_t fd) {
+  return 0;
+}
+
+int32_t open_dir(const uint8_t* filename) {
+  return 0;
+}
+int32_t read_dir(int32_t fd, void* buf, int32_t nbytes) {
+  
+  if (file_names_idx >= num_directory_entries) {
+    // if finished reading all the file names
+    file_names_idx++;
+    return 0;
+  }
+  file_names_idx++;
+  strncpy((int8_t *)buf, (int8_t *)&directory_entries[file_names_idx].file_name, MAX_FILE_NAME_LENGTH);
+  return;
+}
+int32_t write_dir(int32_t fd, const void* buf, int32_t nbytes) {
+  return -1; // read only fs
+}
+int32_t close_dir(int32_t fd) {
+  return 0;
 }

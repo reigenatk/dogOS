@@ -7,6 +7,9 @@
 
 #include "types.h"
 
+#define VIDEO       0xB8000 // about 736KB (753644)
+#define WINDOWS_BLUE 0x11
+
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
 int32_t puts(int8_t *s);
@@ -28,7 +31,7 @@ int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 int32_t bad_userspace_addr(const void* addr, int32_t len);
 int32_t safe_strncpy(int8_t* dest, const int8_t* src, int32_t n);
 
-void change_write_head(uint32_t x, uint32_t y);
+void change_write_head(int8_t new_x, int8_t new_y);
 void bluescreen();
 
 /* Port read functions */
