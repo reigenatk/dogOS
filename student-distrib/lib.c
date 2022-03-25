@@ -208,11 +208,18 @@ void putc(uint8_t c) {
             scroll_up();
         }
         else {
-            screen_x++;
-            screen_x %= NUM_COLS;
-            screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+            // this handles case where we are at rightmost column
+            if (screen_x == NUM_COLS - 1) {
+                screen_x = 0;
+                screen_y++;
+            }
+            else {
+                // otherwise just move x
+                screen_x++;
+            }
         }
     }
+    // move cursor position
     change_blinking_cursor_pos(screen_x, screen_y);
 }
 
@@ -287,6 +294,7 @@ uint32_t strlen(const int8_t* s) {
 void change_write_head(int8_t new_x, int8_t new_y) {
     screen_x = new_x;
     screen_y = new_y;
+    change_blinking_cursor_pos(screen_x, screen_y);
 }
 
 void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y) {
@@ -303,15 +311,72 @@ void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y) {
     }
 }
 
-void do_backspace() {
-    if (screen_x == 0) {
-        // nothing to do
-        return;
+void parse_command(int8_t* program_name, int8_t* arguments, int8_t* command) {
+// a null character or newline will terminate the string
+  int i = 0;
+  int got_program_name = 0;
+  int program_name_idx = 0;
+  int arguments_idx = 0;
+  uint32_t len = strlen(command);
+  while (command[i] == ' ' && i < len) {
+    i++;
+  }
+  for (; i < len; i++) {
+    if (got_program_name == 0) {
+      // reading program name
+
+      // if the value is a space then we know it came after leading spaces
+      if (command[i] == ' ') {
+        got_program_name = 1;
+        continue;
+      }
+
+      // otherwise read into name
+      program_name[program_name_idx] = command[i];
+      program_name_idx++;
+      continue;
     }
-    // move back one and then delete the character already there
-    screen_x--;
+    if (got_program_name == 1 && command[i] == ' ' && arguments_idx == 0) {
+      // then we are on the spaces after program name but before arguments start
+      continue;
+    }
+    if ((got_program_name == 1 && command[i] != ' ') || arguments_idx != 0) {
+      // we are reading arguments
+      arguments[arguments_idx] = command[i];
+      arguments_idx++;
+    }
+  }
+  // terminate with null character for both strings because we won't read those in
+  program_name[program_name_idx] = '\0';
+
+  // remove trailing spaces at end of arguments
+  while (arguments[arguments_idx-1] == ' ') {
+    arguments_idx--;
+  }
+  arguments[arguments_idx+1] = '\0';
+}
+
+void do_backspace() {
+    // find the new position of the cursor- 2 cases
+    if (screen_x == 0) {
+        // go back to previous line if we are on leftmost column
+        // if we are at (0,0) though, nothing to do
+        if (screen_y != 0) {
+            screen_x = NUM_COLS - 1;
+            screen_y--;
+        }
+    }
+    else {
+        // otherwise if not leftmost column, just move back one char
+        screen_x--;
+    }
+    
+    // erase the character already there
     uint32_t idx = screen_y * NUM_COLS + screen_x;
     *(uint8_t *)(video_mem + ((idx) << 1)) = ' ';
+
+    // move cursor
+    change_blinking_cursor_pos(screen_x, screen_y);
 }
 
 /* void* memset(void* s, int32_t c, uint32_t n);

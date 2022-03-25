@@ -70,7 +70,7 @@ int32_t sys_execute(const uint8_t* command) {
   at virtual address 0x08048000. It then must jump to the entry
   point of the program to begin execution.
   */
-  uint32_t entry_point = *((uint32_t *)first_fourty_bytes + 24);
+  uint32_t entry_point = *((uint32_t *)(first_fourty_bytes + 24));
   printf("program entry: 0x%x", entry_point);
   uint32_t new_pid = get_new_process_id();
   if (new_pid == -1) {
@@ -80,7 +80,7 @@ int32_t sys_execute(const uint8_t* command) {
 
   // copy argument information and process ID into the current task.
   strncpy(t->arguments, arguments, strlen(arguments));
-  t->pid = pid;
+  t->pid = new_pid;
 
   /*
   The way to get this
@@ -89,15 +89,21 @@ int32_t sys_execute(const uint8_t* command) {
   (0x00048000) within that page.
   */
   
-  uint32_t start_physical_address = calculate_task_physical_address(pid);
-  virtual_to_physical_remap_directory(PROGRAM_IMAGE_VIRTUAL_ADDRESS, start_physical_address, 1, 1);
-  
+  uint32_t start_physical_address = calculate_task_physical_address(new_pid);
+
+  // 0x08000000 = 128 MB, and since we take first 10 bits its 0000 | 1000 | 00, aka 32th entry
+  // in the page directory table. We need this to be a 4MB page, and also a user page (cuz its a user process' memory)
+  page_directory[32] = start_physical_address | PRESENT_BIT | READ_WRITE_BIT | PAGE_SIZE_BIT | USER_BIT;
+  // must flush to inform the TLB of new changes to paging structures. Because 
+  // otherwise the processor will use the (wrong) page cache
+  flush_tlb();
+
   // copy the executable to the task's page in memory at offset 0x48000. Since we just mapped the memory, we can 
   // now virtual address 0x08048000 will be translated into 0x800000 + 0x48000 
   // AKA 8MB + 48*4KB physical, or a 0x48000 offset into the right page. Just as required.
   // Also we set length to be a really big number, I know from printing out that largest 
   // exe is 5277 bytes, so 10k should work. Because read_data() will exit if done reading.
-  if (read_data(program.inode_number, 0, (uint8_t*) (PROGRAM_IMAGE_VIRTUAL_ADDRESS + OFFSET_WITHIN_PAGE), 10000) == -1) {
+  if (read_data(program.inode_number, 0, (uint8_t*) (PROGRAM_IMAGE_VIRTUAL_ADDRESS + 0x48000), 100000) == -1) {
     return -1;
   }
 
@@ -110,7 +116,10 @@ int32_t sys_execute(const uint8_t* command) {
   // its new kernel-mode stack pointer. This way, when a privilege switch is needed, the correct stack will be set up by the
   // x86 processor
   tss.ss0 = KERNEL_DS;
-  tss.esp0 = calculate_task_pcb_pointer(new_pid) - TASK_STACK_SIZE;
+
+  // This is kernel stack pointer. We want this to point at 8MB physical, then 8MB-8kb physical, etc.
+  // we know that 8MB maps to 8MB thanks to the kernel page entry we made in setup_paging()
+  tss.esp0 = KERNEL_MEM_BOTTOM - ((new_pid-1) * TASK_STACK_SIZE);
 
   // use 'the iret method' from the above link
   change_task(entry_point);
@@ -188,7 +197,8 @@ int32_t sys_open(const uint8_t* filename) {
   }
 
   // mark that file descriptor as in use
-  cur_task.fds[open_fd].flags |= FD_IN_USE_BIT;
+  task *cur_task = get_task();
+  cur_task->fds[open_fd].flags |= FD_IN_USE_BIT;
 
   if (file.file_type == 1) {
     // directory
@@ -200,10 +210,10 @@ int32_t sys_open(const uint8_t* filename) {
       open_dir,
       close_dir
     };
-    cur_task.fds[open_fd].jump_table = dir_jump_table;
+    cur_task->fds[open_fd].jump_table = dir_jump_table;
 
     // also assign the inode value since this is a file
-    cur_task.fds[open_fd].inode = file.inode_number;
+    cur_task->fds[open_fd].inode = file.inode_number;
 
     // call the open
     if (open_dir(filename) == -1) {
@@ -220,7 +230,7 @@ int32_t sys_open(const uint8_t* filename) {
       open_file,
       close_file
     };
-    cur_task.fds[open_fd].jump_table = file_jump_table;
+    cur_task->fds[open_fd].jump_table = file_jump_table;
 
     // call the open
     if (open_file(filename) == -1) {
@@ -237,7 +247,7 @@ int32_t sys_open(const uint8_t* filename) {
       open_RTC,
       close_RTC
     };
-    cur_task.fds[open_fd].jump_table = rtc_jump_table;
+    cur_task->fds[open_fd].jump_table = rtc_jump_table;
 
     // call the open
     if (open_RTC(filename) == -1) {
@@ -248,6 +258,9 @@ int32_t sys_open(const uint8_t* filename) {
     // unknown file type
     return -1;
   }
+
+  // return newly allocated fd
+  return open_fd;
 }
 
 /*
@@ -263,20 +276,22 @@ int32_t sys_close(int32_t fd) {
     // doesn't exist or is special
     return -1;
   }
+  task* cur_task = get_task();
+
   // check to see if this fd is open for this task
-  if (cur_task.fds[fd].flags &= FD_IN_USE_BIT != 0) {
+  if (cur_task->fds[fd].flags &= FD_IN_USE_BIT != 0) {
     // call the right close function
-    cur_task.fds[fd].jump_table.close(fd);
+    cur_task->fds[fd].jump_table.close(fd);
 
     // also set the file descriptor to initial values
-    cur_task.fds[fd].file_position = 0;
-    cur_task.fds[fd].flags = 0; // mark it as not in use
-    cur_task.fds[fd].inode = 0;
+    cur_task->fds[fd].file_position = 0;
+    cur_task->fds[fd].flags = 0; // mark it as not in use
+    cur_task->fds[fd].inode = 0;
 
-    cur_task.fds[fd].jump_table.close = 0;
-    cur_task.fds[fd].jump_table.open = 0;
-    cur_task.fds[fd].jump_table.read = 0;
-    cur_task.fds[fd].jump_table.write = 0;
+    cur_task->fds[fd].jump_table.close = 0;
+    cur_task->fds[fd].jump_table.open = 0;
+    cur_task->fds[fd].jump_table.read = 0;
+    cur_task->fds[fd].jump_table.write = 0;
   }
   else {
     // it's not open
@@ -300,11 +315,11 @@ int32_t sys_getargs(uint8_t* buf, int32_t nbytes) {
   if (buf == 0) {
     return -1;
   }
-
-  if (strlen(&cur_task.arguments) + 1 > nbytes) {
+  task *cur_task = get_task();
+  if (strlen(&(cur_task->arguments)) + 1 > nbytes) {
     return -1;
   }
-  strcpy(buf, &cur_task.arguments);
+  strcpy(buf, &(cur_task->arguments));
   return 0;
 }
 
@@ -324,9 +339,6 @@ to simply change the permissions of the
 video page located < 4MB and pass that address.
 */
 int32_t sys_vidmap(uint8_t** screen_start) {
-  // we get to define where the text-mode video memory maps into userspace
-  // let's put it at 0x8000000
-  uint32_t pre_set_virtual_address = 0x8000000 ;
 
   // check to see if the address passed in is within the address range of this task
   // address range of this task can be calculated if we find the process id, and then 
@@ -346,6 +358,7 @@ int32_t sys_vidmap(uint8_t** screen_start) {
   // this virtual address to this physical address. You can run through the address translation 
   // to verify this is the case
 
+  // we get to define where the text-mode video memory maps into userspace
   // we arbitrarily choose 0x09000000, since we know program memory is at 0x08000000
   // so this is above any address that a program would use (0x08000000 - 0x08400000)
  //  and won't interfere with any previous mappings we have already.

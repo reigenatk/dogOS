@@ -48,7 +48,22 @@ void bluescreen();
 void change_blinking_cursor_pos(int32_t x, int32_t y);
 
 // parses a received string into two buffers, command and argument
-void parse_command(int8_t* program_name, int8_t* arguments, int8_t* command)
+void parse_command(int8_t *program_name, int8_t *arguments, int8_t *command);
+
+/*
+Use this function to flush the TLB by reloading the CR3 register with the same value
+Which will tell the processor to take a new look at the Page Table Directory
+https://wiki.osdev.org/TLB
+*/
+static inline void flush_tlb() {
+    asm volatile(
+        "movl %%cr3, %%eax;"
+        "movl %%eax, %%cr3;"
+        :
+        :
+        : "%eax"
+    );
+}
 
 /* Port read functions */
 /* Inb reads a byte and returns its value as a zero-extended 32-bit

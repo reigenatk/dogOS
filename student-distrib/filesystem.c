@@ -3,6 +3,8 @@
 #define SIXTY_FOUR_BYTES 0x40
 #define FOUR_KB 0x1000
 
+uint32_t num_directory_entries = 0;
+
 /*
 When successful, the first two calls fill in the dentry t
 block passed as their second argument with the file name, file
@@ -82,7 +84,7 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
 
   uint32_t starting_block_idx = offset / FOUR_KB; // for instance, offset 4096 = block 1
   uint32_t offset_within_block = offset % FOUR_KB;
-  uint32_t ptr_to_blocks = filesys_start_address + num_inodes * FOUR_KB;
+  uint32_t ptr_to_blocks = filesys_start_address + (num_inodes+1) * FOUR_KB;
 
   // let's handle the first block then all the later ones
   uint32_t remaining = FOUR_KB - offset_within_block;
@@ -92,11 +94,11 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
   }
   uint32_t ptr = ptr_to_blocks + translated_block * FOUR_KB;
   if (length <= remaining) {
-    memcpy(bufcopy, (void*) ptr+offset, length);
+    memcpy(bufcopy, (void*) ptr+offset_within_block, length);
     return oldlength;
   }
   else {
-    memcpy(bufcopy, (void*)  ptr+offset, remaining);
+    memcpy(bufcopy, (void*)  ptr+offset_within_block, remaining);
     length -= remaining;
     bufcopy += remaining;
     starting_block_idx++;
@@ -190,7 +192,7 @@ int32_t read_file(int32_t fd, void* buf, int32_t nbytes) {
 
   // here I used 1 hardcode since we dont have scheduler but usually this value would be
   // the pid of the current running task in the scheduler file
-  task* PCB_data = (task*) calculate_task_pcb_pointer(1);
+  task *PCB_data = (task *)get_task();
 
   // all we have is a file descriptor number but we need an inode to use read_data
   // we can get that inode by checking what task we're using, since we know inode data

@@ -107,22 +107,26 @@ jump_table:
 .globl change_task
 change_task:
 	# no need for function prologue
-	# it goes ds, esp, eflags, cs, entry point
+	# it goes ds (must be USER_DS according to docs, set to KERNEL_DS when entry into kernel happens), 
+	# esp, eflags, cs, entry point
 
-	xorl $eax, $eax
-	push $USER_DS
+	# store entry point
+	mov 4(%esp), %ecx 
 
-	# stack pointer points to the bottom of the 4MB page created for the user task
+	xorl %eax, %eax
+	movw $USER_DS, %ax 
+	pushl %eax
+
+	# stack pointer points to the bottom of the 4MB page created for the user task, NOT kernel
 	# since virtual mem 0x8000000 points to the top of the right page (thanks to the page remapping we did earlier), 
-	# we add 4MB aka 0x40000 which will get us to the bottom. Then the stack grows up.
+	# we add 4MB aka 0x400000 which will get us to the bottom. Then the stack grows up.
 	push $0x8400000 
 	pushfl
 	pop %eax 
-	orl $0x0020, %eax # set interrupt flag to 1, enables interrupts
+	orl $0x200, %eax # set interrupt flag to 1, enables interrupts
 	push %eax # push back onto stack
 	push $USER_CS
 
-	# push entry point
-	mov 4(%esp), %eax 
-	push %eax
+	# entry point we stored earlier
+	push %ecx
 	iret

@@ -217,7 +217,7 @@ int read_dentry_test() {
 	int i;
 	for (i = 0; i < 17; i++) {
 		uint32_t ret = read_dentry_by_index(i, &t);
-		printf("name: %s, size: %d bytes, inode: %d\n", t.file_name, get_file_size(t.inode_number), t.inode_number);
+		// printf("name: %s, size: %d bytes, inode: %d\n", t.file_name, get_file_size(t.inode_number), t.inode_number);
 	}
 
 	
@@ -228,12 +228,13 @@ int read_dentry_test() {
 int read_data_test() {
 	TEST_HEADER;
 	int result = PASS;
-	uint8_t buffer[6224];
+	uint8_t buffer[10];
 
-	// inode 40 is the sigtest ELF file
-	uint32_t ret = read_data(40, 0, buffer, 6224);
-	uint8_t correct_string[] = "2017-04-24, 16:44:13";
-	if (ret == -1 || strncmp(buffer, correct_string, strlen(correct_string))) {
+	// inode 40 is the sigtest ELF file, it has size 6224 bytes. Let's read in the prologue
+	uint32_t ret = read_data(40, 0, buffer, 8);
+	uint8_t correct_string[10] = {0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00};
+	if (ret == -1 || strncmp(buffer, correct_string, strlen(correct_string)))
+	{
 
 		result = FAIL;
 	}
@@ -246,8 +247,23 @@ int read_data_test() {
 	for (i = 0; i < strlen(buffer); i++) {
 		putc(buffer[i]);
 	}
+	putc('\n');
 
-	// test going over the limit with offset
+	uint8_t buffer10[60];
+	// print out magic string at end of ELF (31 bytes)
+	// using xxd i found the offset to be 0x420 or 1056 bytes
+	// but we have to add 4096 since the entire first block exists
+	// 4096 + 1056 = 5152
+	read_data(3, 5152, buffer10, 60);
+
+	for (i = 0; i < 32; i++) {
+		putc(buffer10[i]);
+	}
+	putc('\n');
+
+
+	
+	// test going over the limit with offset- should return -1
 	uint8_t buffer2[6224];
 	uint32_t ret2 = read_data(40, 10000, buffer2, 10);
 	if (ret2 != -1) {
@@ -263,10 +279,70 @@ int read_data_test() {
 	for (i = 0; i < strlen(buffer3); i++) {
 		putc(buffer3[i]);
 	}
-	
+	putc('\n');
+
+	// tests read function for directory, 
+	// should print filenames one at a time 
+	for (i = 0; i < num_directory_entries; i++) {
+		uint8_t buffer4[100];
+		int32_t fd = read_dir(TEST_FD, buffer4, 100);
+		printf("%s\n", buffer4);
+	}
+
+	// You should have tests to demonstrate that you can read small files (frame0.txt, frame1.txt), executables
+	// (grep, ls) and large files (fish, verylargetextwithverylongname.tx(t)).
+
+	// we already did executable (sigtest), let's try the small files and large files
+
+	/*
+	// size 187 bytes (this will spam the screen, uncomment if you don't want to see this)
+	uint8_t buffer5[200];
+	read_data_by_filename("frame0.txt", buffer5, 200);
+	for (i = 0; i < strlen(buffer5); i++) {
+		putc(buffer5[i]);
+	}
+	putc('\n');
+
+	// size 5227 (this will spam the screen, uncomment if you don't want to see this)
+	uint8_t buffer6[6000];
+	read_data_by_filename("verylargetextwithverylongname.tx", buffer6, 6000);
+	for (i = 0; i < strlen(buffer6); i++) {
+		putc(buffer6[i]);
+	}
+	putc('\n');
+	*/
 
 	return result;
 }
+
+// tests terminal read- uncomment to use
+
+int terminal_read_write_test() {
+	TEST_HEADER;
+	int result = PASS;
+
+	// 128 because that's max line scan length
+	uint8_t buf[128];
+
+	// Your keyboard test can just be a calling terminal read,
+	// followed by terminal write in a while loop.
+	while (1) {
+		// doesn't matter what FD we pass in because it's not used
+		int32_t ret = terminal_read(0, buf, 128);
+		int i;
+		putc('\n');
+		printf("Buffer contents:\n");
+		// prints onto terminal using putc
+		terminal_write(0, buf, ret);
+		putc('\n');
+		printf("Number of characters read: %d\n", ret);
+	}
+
+
+
+	return result;
+}
+
 
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
@@ -284,6 +360,7 @@ void launch_tests(){
 	// Checkpoint 2 Tests
 	TEST_OUTPUT("read_dentry_test", read_dentry_test());
 	TEST_OUTPUT("read_data_test", read_data_test());
+	// TEST_OUTPUT("terminal_read_write_test", terminal_read_write_test());
 
 	// launch your tests here
 }

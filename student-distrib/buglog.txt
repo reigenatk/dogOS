@@ -11,3 +11,12 @@ send_eoi wasn't working, sure enough I was sending the wrong bytes.
 and the second one not. This was when writing tests. Not sure what the deal is, but 
 the second one wasn't passing the string properly to the tests and hence causing a lot of 
 problems.
+
+4. When doing read_data(), I was miscalculating one of my pointer by a 4KB block, which led 
+to me not reading in any data when I should've been reading in data. This was fixed
+by adding a +1, specifically this was for the value of uint32_t ptr_to_blocks
+
+5. Page fault occuring because in the context switch, I wasn't re-enabling the interrupt flag,
+and I was also doing something where I didn't push esp+4 off immediately, so the stack was loading 
+a wrong entry point address, and probably failing when it IRET'ed since it was trying to 
+access a wrong memory address.

@@ -15,6 +15,7 @@
     "atomic": "c",
     "iosfwd": "c",
     "xlocbuf": "c",
-    "xiosbase": "c"
+    "xiosbase": "c",
+    "terminal.h": "c"
   }
 }

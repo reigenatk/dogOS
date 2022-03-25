@@ -4,6 +4,7 @@
 #include "filesystem.h"
 #include "RTC.h"
 #include "keyboard.h"
+#include "terminal.h"
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
@@ -97,7 +98,7 @@ In other words, each task has its own page directory!
 
 extern uint32_t running_process_ids[MAX_TASKS];
 
-task *get_task_from_pid(uint32_t pid);
+task *get_task();
 
 uint32_t get_new_process_id();
 

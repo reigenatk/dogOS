@@ -198,7 +198,7 @@ __attribute__((interrupt)) void keyboard_INT() {
   // disable this IRQ line from sending info to the CPU for a second
   disable_irq(KEYBOARD_IRQ);
 
-  // no more processor interrupts
+  // no more processor interrupts (extra keypresses disabled)
   cli();
 
   uint8_t keycode = 0; // keycodes range from 0x0-0x60 ish, let's use 0 which is error code normally to indicate we haven't received anything
@@ -232,7 +232,15 @@ __attribute__((interrupt)) void keyboard_INT() {
     is_alt_pressed = 0;
   }
   else if (keycode == KEY_BACKSPACE) {
-    do_backspace();
+    // also delete the character from the buffer if the buffer isn't empty
+    if (cur_terminal->line_buffer_idx != 0) {
+      cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = '\0';
+      cur_terminal->line_buffer_idx--;
+
+      // don't do a backspace (moving cursor position) unless there was a key in the buffer
+      // this prevents us from going back to lines that we already wrote
+      do_backspace();
+    }
   }
   else {
     if (keycode <= NUM_KEYS) {
@@ -240,6 +248,16 @@ __attribute__((interrupt)) void keyboard_INT() {
 
       // if the character is not displayable, do not display
       if (keys[keycode].should_display == 0) {
+        goto done;
+      }
+
+      // Both ctrl + l and ctrl + L should clear the screen. You should not be resetting the read buffer if the user
+      // clears the screen before pressing enter while typing in terminal read
+      if ((keycode == KEY_L || keycode == KEY_1) && is_ctrl_key_pressed == 1) {
+        // CTRL + L, then we will reset cursor to top left 
+        // and also clear screen
+        clear();
+        change_write_head(0, 0);
         goto done;
       }
 
@@ -253,7 +271,13 @@ __attribute__((interrupt)) void keyboard_INT() {
       }
       // press 3 to test interrupts
       if (keycode == KEY_3) {
-        execute("  hello hi bye  ");
+        execute("syserr");
+      }
+      // press 4 to test frequency toggle
+      if (keycode == KEY_4) {
+        uint32_t rtc_fd = open("rtc");
+        uint32_t val[1] = {1024};
+        write(rtc_fd, val, 1);
       }
 
       uint8_t key_char = 0;
@@ -274,28 +298,22 @@ __attribute__((interrupt)) void keyboard_INT() {
         key_char = keys[keycode].uppercase_char;
       }
 
-      if (keycode == KEY_L && is_ctrl_key_pressed == 1) {
-        // CTRL + L, then we will reset cursor to top left 
-        // and also clear screen
-        clear();
-        change_write_head(0, 0);
-        goto done;
-      }
-
       if (keycode == KEY_ENTER) {
-        // then its a newline, so print out line buffer
-        line_buffer[line_buffer_idx] = '\n';
-
+        // then its a newline, so tag on a newline
+        cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = '\n';
+        cur_terminal->line_buffer_idx++;
+        // notify the terminal that a newline has been received
+        cur_terminal->newline_received = 1;
       }
-
-      putc(key_char);
-
-
       // try adding to the line buffer (minus 1 because newline is at end)
-      if (line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
-        line_buffer[line_buffer_idx] = key_char;
-        line_buffer_idx++;
+      if (cur_terminal->line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
+        // then add it to the line buffer and print the char out
+        cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = key_char;
+        cur_terminal->line_buffer_idx++;
+        putc(key_char);
       }
+
+      // otherwise nothing happens
     }
   }
 

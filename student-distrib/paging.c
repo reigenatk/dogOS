@@ -106,21 +106,7 @@ void setup_paging() {
 
 // }
 
-void virtual_to_physical_remap_directory(uint32_t virtual, uint32_t physical, uint32_t user_bit, uint32_t is_four_mb) {
-  uint32_t page_idx = virtual & FIRST_TEN_BITS_MASK; // which index into the page table are we at 
-  if (is_four_mb == 0) {
-    page_directory[page_idx] = (physical & FIRST_TWENTY_BITS) | PRESENT_BIT | READ_WRITE_BIT;
-  }
-  else {
-    page_directory[page_idx] = (physical & FIRST_TEN_BITS_MASK) | PRESENT_BIT | READ_WRITE_BIT;
-  }
-  
-  if (user_bit == 1) {
-    page_directory[page_idx] |= USER_BIT;
-  }
 
-
-}
 
 /*
 Page/Page Table base address, bits 12 through 32

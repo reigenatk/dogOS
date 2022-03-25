@@ -21,20 +21,19 @@
   {                                                \
     cli();                                         \
     clear();                                       \
-    uint32_t cr2, cr3;                             \
+    uint32_t cr2, cr3, esp;                             \
     asm volatile(                                  \
-        "movl %%cr2, %%eax;"                       \
-        "movl %%eax, %0;"                          \
-        "movl %%cr3, %%eax;"                       \
-        "movl %%eax, %1;"                          \
-        : "=r"(cr2), "=r"(cr3)                     \
+        "movl %%cr2, %0;"                       \
+        "movl %%cr3, %1;"                       \
+        "movl %%esp, %2;"                       \
+        : "=r"(cr2), "=r"(cr3), "=r"(esp)          \
         :                                          \
         : "%eax");                                 \
     bluescreen();                                  \
     change_write_head(0, 0);                       \    
     printf("%s", #name_of_handler);                \
-    change_write_head(40, 0);                      \     
-    printf("cr2: 0x%x, cr3: 0x%#x", cr2, cr3);        \
+    change_write_head(30, 0);                      \     
+    printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x", cr2, cr3, esp);        \
     sti();                                         \
     while(1); \
   }

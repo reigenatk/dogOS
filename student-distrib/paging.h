@@ -26,10 +26,7 @@ void setup_paging();
 // so it has 1024 entries that map to 
 // setup_paging_for_process(uint32_t pd_addr, uint32_t pt_addr);
 
-// remaps a virtual address to a specific physical address, by going into the page
-// entry for that virtual address, and changing the physical address listed in the entry.
-void virtual_to_physical_remap_directory(uint32_t virtual, uint32_t 
-physical, uint32_t user_bit, uint32_t is_four_mb);
+
 
 // maps a virtual to physical by tracing the address translation that the virtual
 // address would take, and creating corresponding page table + page directory entries 

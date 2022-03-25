@@ -44,7 +44,10 @@ task* init_task(uint32_t pid) {
   // initiate two open file descriptors for stdin and stdout (0 and 1)
   file_descriptor stdin, stdout;
   jump_table_fd jt = {
-    0, 0, 0, 0
+    .read = terminal_read,
+    .open = terminal_open,
+    .write = terminal_write,
+    .close = terminal_close,
   };
   stdin.file_position = 0;
   stdin.flags = 1;
@@ -72,6 +75,7 @@ task* init_task(uint32_t pid) {
   return task_pcb;
 }
 
+// these go from 8MB -12MB, 12MB-16MB, (so on) in physical memory. 
 uint32_t calculate_task_physical_address(uint32_t pid) {
   // need to subtract 1 because process ID starts at 1
   return KERNEL_MEM_BOTTOM + FOURMB * (pid-1);
@@ -82,14 +86,37 @@ uint32_t calculate_task_pcb_pointer(uint32_t pid) {
   return KERNEL_MEM_BOTTOM - (TASK_STACK_SIZE)*(pid);
 }
 
-task *get_task_from_pid(uint32_t pid) {
-  return (task *)calculate_task_pcb_pointer(pid);
+/*
+To get at each process’s PCB, you need only AND the process’s ESP register
+with an appropriate bit mask to reach the top of its 8 kB kernel stack,
+which is the start of its PCB.
+
+BIT MASK calculation: since 0x400000 - 0x800000 (4mb - 8mb) is mapped exactly to the 
+same address range due to our kernel page entry, we can work directly with these addresses
+The pcb's will live at 8kb offsets, so 0x7FE000, 0x7FC000, .. 0x7F2000, etc. So we can just 
+take current ESP, and & it with 0xFFE000 and it should work. We don't have to have any 
+higher bits because we know it only goes down from 0x7FE000. And we don't care about 
+last 3 bits because they are at 0x2000 offsets, and we want zeros for last 3 bits. 
+And we do E instead of F for the third bit because the values are always even
+*/
+task *get_task() {
+  task *ret;
+  asm volatile(
+      "movl %%esp, %%eax;"
+      "andl $0x007FE000, %%eax;"
+      "mov %%eax, %0;"
+      : "=r"(ret)
+      : 
+      : "eax"
+    );
+  return ret;
 }
 
 uint32_t find_unused_fd() {
   int i;
+  task *cur_task = get_task();
   for (i = 0; i < MAX_OPEN_FILES; i++) {
-    if (cur_task.fds[i].flags & FD_IN_USE_BIT != 1) {
+    if (cur_task->fds[i].flags & FD_IN_USE_BIT != 1) {
       // free file descriptor to use
       return i;
     }

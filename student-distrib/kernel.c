@@ -184,6 +184,8 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Initializing Paging");
     setup_paging();
 
+    init_terminal();
+
     // init_task();
 
     /* Enable interrupts */
