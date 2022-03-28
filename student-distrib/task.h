@@ -53,7 +53,7 @@ typedef struct jump_table_fd {
 
 // for flags bit, let's let the very first bit be whether or not the FD is in use.
 // it will be set to 1 if in use, 0 otherwise.
-#define FD_IN_USE_BIT 0x1
+#define FD_IN_USE 0x1
 
 // lets also define read + write privs for certain file descriptors. For example, stdin
 // is read only while stdout is write only
@@ -65,24 +65,33 @@ typedef struct file_descriptor {
   uint32_t inode;
   uint32_t file_position;
   uint32_t flags;
-
 } file_descriptor;
 
 // this is our pcb (Process Control Block) struct with data like all file descriptors,
 // the name of the task, the arguments that were passed in (which is limited by 
 // max buffer size), etc. This data goes at the start of the 8KB kernel stack for this task
+
+// forward declare so we can use it inside its own definition
+
 typedef struct task {
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
   uint32_t pid; // the process ID tells us all sorts of into about where the process is in memory
   uint32_t esp;
   uint8_t arguments[128];
-  uint32_t parent_process_number;
 
-  // // page tables and directories are of type uint32_t, so we need pointers to that
+  // store process id of the parent task which called this task.
+  // if nothing called this task, set this to its own process id
+  uint32_t parent_process_task_id;
+
+  // for when we call halt on this process, so we can return nicely
+  uint32_t return_esp;
+  uint32_t return_ebp;
+  uint32_t return_eip;
+
   // uint32_t* page_table_address;
+  // // page tables and directories are of type uint32_t, so we need pointers to that
   // uint32_t* page_directory_address;
-
 } task;
 
 /*
@@ -95,19 +104,30 @@ In other words, each task has its own page directory!
 */
 
 
+/*
+Further, you must support up to six processes
+in total. For example, each terminal running shell running 
+another program. 
+For the other extreme, have 2 terminals
+running 1 shell and have 1 terminal running 4 programs 
+(a program on top of shell, on top of shell, etc.).
 
-extern uint32_t running_process_ids[MAX_TASKS];
+Mark bit as 1 if process ID is taken, 0 if not taken
+We will use IDs 1 - 6, hence the +1
+*/
+extern uint32_t running_process_ids[MAX_TASKS+1];
 
 task *get_task();
 
-uint32_t get_new_process_id();
+int32_t get_new_process_id();
+
 
 
 // Given a PID, this creates a new task struct for this process and initializes stdin, stdout file
 // descriptors for it 
 task* init_task(uint32_t pid);
 
-uint32_t find_unused_fd();
+int32_t find_unused_fd();
 
 /*
 As in Linux, the tasks will share common mappings for kernel pages, in this case a single, global 4 MB page. Unlike
@@ -130,6 +150,6 @@ uint32_t calculate_task_physical_address(uint32_t pid);
 
 uint32_t calculate_task_pcb_pointer(uint32_t pid);
 
-task *get_task_from_pid(uint32_t pid);
+
 
 #endif

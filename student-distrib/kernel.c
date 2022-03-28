@@ -177,8 +177,7 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Initializing Keyboard\n");
     init_keyboard();
     printf("Initializing RTC\n");
-    init_RTC();
-    set_RTC_rate(2);
+    open_RTC("rtc");
 
     // paging
     printf("Initializing Paging");
@@ -186,7 +185,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     init_terminal();
 
-    // init_task();
+    
 
     /* Enable interrupts */
     /* Do not enasble the following until after you have set up your

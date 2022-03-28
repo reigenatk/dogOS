@@ -32,7 +32,7 @@
     bluescreen();                                  \
     change_write_head(0, 0);                       \    
     printf("%s", #name_of_handler);                \
-    change_write_head(30, 0);                      \     
+    change_write_head(0, 20);                      \     
     printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x", cr2, cr3, esp);        \
     sti();                                         \
     while(1); \

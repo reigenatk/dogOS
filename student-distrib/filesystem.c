@@ -13,8 +13,8 @@ type, and inode number for the file, then return 0
 uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t* dentry) {
   int i;
   for (i = 0; i < num_directory_entries; i++) {
-    if (strncmp((int8_t*) directory_entries[i].file_name, (int8_t*) fname, strlen(fname)) == 0) {
-      // if the same filename
+    if (strncmp((int8_t*) directory_entries[i].file_name, (int8_t*) fname, strlen((int8_t*) directory_entries[i].file_name)) == 0) {
+      // if the same filename, copy file info into the dentry output ptr
       strcpy((int8_t*) dentry->file_name, (int8_t*) directory_entries[i].file_name);
       dentry->file_type = directory_entries[i].file_type;
       dentry->inode_number = directory_entries[i].inode_number;
@@ -24,6 +24,7 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t* dentry) {
   }
   return -1;
 }
+
 
 uint32_t read_dentry_by_index (uint32_t index, dentry_t* dentry) {
   // index out of bounds?
@@ -64,20 +65,35 @@ data block number is found within the file bounds of the
 given inode, the function should also return -1.
 */
 uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length) {
-  uint32_t oldlength = length;
+  
   uint8_t* bufcopy = buf;
   if (inode < 0 || inode >= num_inodes) {
     return -1;
   }
 
   uint32_t length_of_data = inodes[inode].length_in_bytes;
+  
+  if (length > length_of_data) {
+    // if we are trying to read more data then there is available
+    // then change length to the amount of data available so we don't
+    // read more than what is there
+    length = length_of_data;
+  }
+  // save the old value of how much data we want to read, as we will be
+  // subtracting from the length variable
+  uint32_t oldlength = length;
   // printf("%d", length_of_data);
 
   // if we're asking to start past the length of data then obviously this is wrong
-  if (offset < 0 || offset >= length_of_data) {
+  if (offset < 0 || offset > length_of_data) {
     return -1;
   }
 
+  // if we are asking to read at the very end of the data, then we have the 
+  // case where we are "done" (perhaps from a previous read) so we return 0
+  if (offset == length_of_data) {
+    return 0;
+  }
 
   // this is the max block idx we should ever use. All block idx should be less than this num
   uint32_t limit = (length_of_data / FOUR_KB) + 1;
@@ -223,12 +239,28 @@ int32_t read_dir(int32_t fd, void* buf, int32_t nbytes) {
   
   if (file_names_idx >= num_directory_entries) {
     // if finished reading all the file names
-    file_names_idx++;
     return 0;
   }
+  // clear target buffer
+  int i;
+  for (i = 0; i < MAX_FILE_NAME_LENGTH; i++) {
+    ((int8_t*) buf)[i] = '\0';
+  }
+  uint32_t length_of_file_name = strlen(directory_entries[file_names_idx].file_name);
+  
+  // if you copy more than 32 it will error out, not sure why since its not 
+  // in the ls source code but whatever, just limit it here
+  if (length_of_file_name > MAX_FILE_NAME_LENGTH) {
+    length_of_file_name = MAX_FILE_NAME_LENGTH;
+  }
+  int8_t buff[3];
+  itoa(length_of_file_name, buff, 10);
+  putc(buff[0]);
+  putc(buff[1]);
+  putc(buff[2]);
+  strncpy((int8_t *)buf, (int8_t *)&directory_entries[file_names_idx].file_name, length_of_file_name);
   file_names_idx++;
-  strncpy((int8_t *)buf, (int8_t *)&directory_entries[file_names_idx].file_name, MAX_FILE_NAME_LENGTH);
-  return;
+  return length_of_file_name;
 }
 int32_t write_dir(int32_t fd, const void* buf, int32_t nbytes) {
   return -1; // read only fs

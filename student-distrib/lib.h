@@ -5,17 +5,26 @@
 #ifndef _LIB_H
 #define _LIB_H
 
-#include "types.h"
+// about 736KB (753644) which gets mapped to same physical address
+// since we mapped first 8MB directly
+#define VIDEO       0xB8000 
 
-#define VIDEO       0xB8000 // about 736KB (753644)
-#define WINDOWS_BLUE 0x11
-
-#define RTC_X 75
-#define RTC_Y 3
+/*
+https://wiki.osdev.org/Printing_To_Screen
+The attribute byte carries the foreground colour in its 
+lowest 4 bits and the background color in its highest 3 bits. 
+The interpretation of bit #7 
+depends on how you (or the BIOS) configured the hardware
+*/
+#define WINDOWS_BLUE 0x1F // white on blue
 
 #define NUM_COLS    80
 #define NUM_ROWS    25
-#define ATTRIB      0x7
+#define ATTRIB      0x7 // lightgrey-on-black (DOS default)
+
+#include "types.h"
+#include "terminal.h"
+#include "filesystem.h"
 
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);

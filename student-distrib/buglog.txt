@@ -20,3 +20,15 @@ by adding a +1, specifically this was for the value of uint32_t ptr_to_blocks
 and I was also doing something where I didn't push esp+4 off immediately, so the stack was loading 
 a wrong entry point address, and probably failing when it IRET'ed since it was trying to 
 access a wrong memory address.
+
+6. When I was trying my execute() syscall out, I didn't know that it was calling 
+my read() function for shell() (which was redirecting to terminal_read). 
+Then I had a subtle bug in my keyboard when I 
+was changing a local variable instead of a pointer 
+to the actual struct, which was 
+causing the terminal_read() function to hang forever. I debugged this by using a pointer.
+
+7. In writing system call linkage, the right return value was somehow getting lost 
+between my execute + halt functions. I stepped through it using a debugger and realized
+that it was due to the use of a local variable in my execute function. So I 
+opted to replace it with inline assembly instead and it ended up working. 

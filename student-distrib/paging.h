@@ -37,6 +37,8 @@ void virtual_to_physical_remap_usertable(uint32_t virtual, uint32_t physical, ui
 extern uint32_t page_directory[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 extern uint32_t page_table[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 
-// a page table for user-space programs to use
+// another page table available for use.
+// the other page table is being used for first 4MB and is full.
+// we don't want to overwrite that so we make a new one 
 extern uint32_t userspace_page_table[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 #endif

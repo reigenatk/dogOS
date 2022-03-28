@@ -4,16 +4,16 @@
 
 
 // start this with no running tasks at all. We start counting at PID = 1.
-uint32_t running_process_ids[MAX_TASKS] = {0, 0, 0, 0, 0, 0};
+uint32_t running_process_ids[MAX_TASKS+1] = {0, 0, 0, 0, 0, 0, 0};
 static uint32_t next_process_num = 1;
 
-uint32_t get_new_process_id() {
-  int i = 0;
-  for (; i < MAX_TASKS; i++) {
+int32_t get_new_process_id() {
+  int i = 1;
+  for (; i <= MAX_TASKS; i++) {
     if (running_process_ids[i] == 0) {
       // open slot
-      running_process_ids[i] = next_process_num++;
-      return running_process_ids[i];
+      running_process_ids[i] = 1;
+      return i;
     }
   }
   // full
@@ -112,12 +112,14 @@ task *get_task() {
   return ret;
 }
 
-uint32_t find_unused_fd() {
-  int i;
+int32_t find_unused_fd() {
+  int32_t i;
   task *cur_task = get_task();
-  for (i = 0; i < MAX_OPEN_FILES; i++) {
-    if (cur_task->fds[i].flags & FD_IN_USE_BIT != 1) {
-      // free file descriptor to use
+  for (i = 0; i < 8; i++) {
+    file_descriptor f = cur_task->fds[i];
+    uint32_t flags = f.flags;
+    if ((flags & FD_IN_USE) == 0) {
+      // printf("open fd: %d\n", i);
       return i;
     }
   }

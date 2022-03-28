@@ -75,7 +75,8 @@ gdt_ptr:
     # Also DPL = 0 for first 2 segments but 3 for the other 2 which makes sense since its 2 kernel, 2 user
     # And finally, type (which deal with read/write access)
     # is different between CS and DS. Other than these changes, they are identical.
-    
+    # Base addresses are all zero, which is because we aren't using segmentation
+
     # Set up an entry for kernel CS
     .quad 0x00CF9A000000FFFF # type here is A, which is execute/read. 
 

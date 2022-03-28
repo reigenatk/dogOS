@@ -201,6 +201,8 @@ __attribute__((interrupt)) void keyboard_INT() {
   // no more processor interrupts (extra keypresses disabled)
   cli();
 
+  terminal_t* terminal = &terminals[cur_terminal];
+
   uint8_t keycode = 0; // keycodes range from 0x0-0x60 ish, let's use 0 which is error code normally to indicate we haven't received anything
 	do {
 		if (inb(KEYBOARD_PORT) != 0) {
@@ -233,9 +235,9 @@ __attribute__((interrupt)) void keyboard_INT() {
   }
   else if (keycode == KEY_BACKSPACE) {
     // also delete the character from the buffer if the buffer isn't empty
-    if (cur_terminal->line_buffer_idx != 0) {
-      cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = '\0';
-      cur_terminal->line_buffer_idx--;
+    if (terminal->line_buffer_idx != 0) {
+      terminal->line_buffer[terminal->line_buffer_idx] = '\0';
+      terminal->line_buffer_idx--;
 
       // don't do a backspace (moving cursor position) unless there was a key in the buffer
       // this prevents us from going back to lines that we already wrote
@@ -261,24 +263,29 @@ __attribute__((interrupt)) void keyboard_INT() {
         goto done;
       }
 
+      // terminal switches (if ALT + F1, F2 or F3)
+      if (is_alt_pressed && (keycode == KEY_F1 || keycode == KEY_F2 || keycode == KEY_F3)) {
+        
+      }
+
       // press 1 key to test the RTC interrupt functionality
-      if (keycode == KEY_1) {
-        toggle_run();
-      }
-      // press 2 key to get an exception
-      if (keycode == KEY_2) {
-        dereference_null();
-      }
-      // press 3 to test interrupts
-      if (keycode == KEY_3) {
-        execute("syserr");
-      }
-      // press 4 to test frequency toggle
-      if (keycode == KEY_4) {
-        uint32_t rtc_fd = open("rtc");
-        uint32_t val[1] = {1024};
-        write(rtc_fd, val, 1);
-      }
+      // if (keycode == KEY_1) {
+      //   toggle_run();
+      // }
+      // // press 2 key to get an exception
+      // if (keycode == KEY_2) {
+      //   dereference_null();
+      // }
+      // // press 3 to test interrupts
+      // if (keycode == KEY_3) {
+      //   execute("syserr");
+      // }
+      // // press 4 to test frequency toggle
+      // if (keycode == KEY_4) {
+      //   uint32_t rtc_fd = open("rtc");
+      //   uint32_t val[1] = {1024};
+      //   write(rtc_fd, val, 1);
+      // }
 
       uint8_t key_char = 0;
       // if shift and no caps lock
@@ -298,21 +305,18 @@ __attribute__((interrupt)) void keyboard_INT() {
         key_char = keys[keycode].uppercase_char;
       }
 
-      if (keycode == KEY_ENTER) {
-        // then its a newline, so tag on a newline
-        cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = '\n';
-        cur_terminal->line_buffer_idx++;
-        // notify the terminal that a newline has been received
-        cur_terminal->newline_received = 1;
-      }
+
       // try adding to the line buffer (minus 1 because newline is at end)
-      if (cur_terminal->line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
+      if (terminal->line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
         // then add it to the line buffer and print the char out
-        cur_terminal->line_buffer[cur_terminal->line_buffer_idx] = key_char;
-        cur_terminal->line_buffer_idx++;
+        terminal->line_buffer[terminal->line_buffer_idx] = key_char;
+        terminal->line_buffer_idx++;
         putc(key_char);
       }
-
+      if (keycode == KEY_ENTER) {
+        // notify the terminal that a newline has been received
+        terminal->newline_received = 1;
+      }
       // otherwise nothing happens
     }
   }

@@ -8,5 +8,6 @@ void launch_tests();
 // to see if its increasing to prove that our RTC is working
 // we will also display this somewhere on the screen as suggested in the spec
 extern int rtc_test_counter;
+extern int rtc_virtual_counter;
 
 #endif /* TESTS_H */

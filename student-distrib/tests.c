@@ -8,8 +8,10 @@
 
 #define PASS 1
 #define FAIL 0
+#define RTC_TEST_TICKS 3000
 
 int rtc_test_counter = 0;
+int rtc_virtual_counter = 0;
 
 /* format these macros as you see fit */
 #define TEST_HEADER 	\
@@ -85,13 +87,25 @@ int idt_offset_test(){
 int rtc_test() {
 	TEST_HEADER;
 	int result = PASS;
-	// check if the RTC value is not zero (we have set rate to 2 per sec)
-	// theoretically a few seconds will have passed since the tests run last, but there's a 
-	// chance that this fails
-	if (rtc_test_counter == 0) {
-		result = FAIL;
+
+	uint32_t buf[12] = {4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+	
+	// try changing to all the rates
+	while (1) {
+		if (rtc_test_counter % RTC_TEST_TICKS == 0 && rtc_test_counter != 0) {
+			uint32_t i = rtc_test_counter / RTC_TEST_TICKS;
+			write_RTC(-1, &buf[i - 1], 1);
+		}
+		// try rtc_open to reset the rate to 2 Hz
+		if (rtc_test_counter == RTC_TEST_TICKS * 14) {
+			open_RTC("rtc");
+		}
+		if (rtc_test_counter == RTC_TEST_TICKS * 15) {
+			break;
+		}
 	}
-	printf("# of RTC interrupts received: %d\n", rtc_test_counter);
+
+
 	return result;
 }
 
@@ -355,7 +369,7 @@ void launch_tests(){
 
 	// TEST_OUTPUT("paging_test", paging_test());
 	// // run this last
-	// TEST_OUTPUT("receive_rtc_interrupt", rtc_test());
+	TEST_OUTPUT("receive_rtc_interrupt", rtc_test());
 
 	// Checkpoint 2 Tests
 	TEST_OUTPUT("read_dentry_test", read_dentry_test());

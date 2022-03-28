@@ -312,8 +312,15 @@ void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y) {
 }
 
 void parse_command(int8_t* program_name, int8_t* arguments, int8_t* command) {
-// a null character or newline will terminate the string
+  // clear the two buffers first (because previous commands may have filled it up)
   int i = 0;
+  for (i = 0; i < MAX_FILE_NAME_LENGTH; i++) {
+      program_name[i] = '\0';
+  }
+  for (i = 0; i < LINE_BUFFER_MAX_SIZE; i++) {
+      arguments[i] = '\0';
+  }
+  i = 0;
   int got_program_name = 0;
   int program_name_idx = 0;
   int arguments_idx = 0;

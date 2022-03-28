@@ -15,5 +15,7 @@ int32_t write_RTC(int32_t fd, const void* buf, int32_t nbytes);
 int32_t close_RTC(int32_t fd);
 
 volatile uint8_t the_flag;
+extern uint32_t current_RTC_rate;
+
 
 #endif
