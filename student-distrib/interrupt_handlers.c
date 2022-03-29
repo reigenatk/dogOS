@@ -1,6 +1,7 @@
 #include "interrupt_handlers.h"
 
 // this is standard interrupt vector for keyboard, as seen in the course notes. It's also IRQ1 on master PIC.
+#define TIMER_CHIP_INTERRUPT_VECTOR 0x20
 #define KEYBOARD_INTERRUPT_VECTOR 0x21 
 #define RTC_INTERRUPT_VECTOR 0x28
 #define SYSCALL_INTERRUPT_VECTOR 0x80 // INT 0x80
@@ -21,19 +22,19 @@
   {                                                \
     cli();                                         \
     clear();                                       \
-    uint32_t cr2, cr3, esp;                             \
+    uint32_t cr2, cr3, esp, eip;                             \
     asm volatile(                                  \
         "movl %%cr2, %0;"                       \
         "movl %%cr3, %1;"                       \
         "movl %%esp, %2;"                       \
-        : "=r"(cr2), "=r"(cr3), "=r"(esp)          \
-        :                                          \
-        : "%eax");                                 \
+        "movl 0x8(%%esp), %3;"                       \
+        : "=r"(cr2), "=r"(cr3), "=r"(esp), "=r"(eip) \
+        );                                      \
     bluescreen();                                  \
-    change_write_head(0, 0);                       \    
+    change_write_head(0, 0);                        \    
     printf("%s", #name_of_handler);                \
     change_write_head(0, 20);                      \     
-    printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x", cr2, cr3, esp);        \
+    printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x, eip: 0x%x", cr2, cr3, esp, eip); \
     sti();                                         \
     while(1); \
   }
@@ -89,6 +90,7 @@ void add_interrupt_handler_functions() {
   SET_IDT_ENTRY(idt[18], machine_check_exception);
   SET_IDT_ENTRY(idt[19], simd_fp_exception);
 
+  SET_IDT_ENTRY(idt[TIMER_CHIP_INTERRUPT_VECTOR], pit_interrupt_handler);
   SET_IDT_ENTRY(idt[KEYBOARD_INTERRUPT_VECTOR], keyboard_handler_wrapper);
   SET_IDT_ENTRY(idt[RTC_INTERRUPT_VECTOR], rtc_handler_wrapper);
 

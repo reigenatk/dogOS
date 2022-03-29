@@ -19,7 +19,7 @@ int32_t sys_halt(uint8_t status) {
   cli();
 
   // get the current process
-  uint32_t current_task_pid = terminals[cur_terminal].current_running_pid;
+  uint32_t current_task_pid = terminals[cur_terminal_displayed].current_running_pid;
   task* current_running_task = (task*) (calculate_task_pcb_pointer(current_task_pid));
   uint32_t parent_task_pid = current_running_task->parent_process_task_id;
   // task *parent_task_ptr = (task*) (calculate_task_pcb_pointer(parent_task_pid));
@@ -52,7 +52,7 @@ int32_t sys_halt(uint8_t status) {
   }
 
   // tell the terminal the right currently running process id
-  terminals[cur_terminal].current_running_pid = parent_task_pid;
+  terminals[cur_terminal_displayed].current_running_pid = parent_task_pid;
 
   // map the page directory entry for 0x08000000 -> 0x08400000
   // to point to the page of the parent process. Just like we did in 
@@ -189,7 +189,7 @@ int32_t sys_execute(const uint8_t* command) {
     return -1;
   }
   
-
+  // https://wiki.osdev.org/Context_Switching
   // the important fields are SS0 and
   // ESP0. These fields contain the stack segment and stack pointer that the x86 will put into SS and ESP when performing
   // a privilege switch from privilege level 3 to privilege level 0 (for example, when a user-level program makes a system
@@ -201,7 +201,8 @@ int32_t sys_execute(const uint8_t* command) {
   tss.ss0 = KERNEL_DS;
 
   // This is kernel stack pointer. We want this to point at 8MB physical, then 8MB-8kb physical, etc.
-  // we know that 8MB maps to 8MB thanks to the kernel page entry we made in setup_paging()
+  // we know that 4MB-8MB maps directly thanks to the kernel page entry we made in setup_paging()
+  // also we need -4 here because 8MB virtual doesn't use the right page directory entry
   tss.esp0 = KERNEL_MEM_BOTTOM - ((new_pid-1) * TASK_STACK_SIZE) - 4;
 
 
@@ -226,19 +227,18 @@ int32_t sys_execute(const uint8_t* command) {
   // that task's ptr as the parent task. Otherwise set its own 
   // task ptr as its parent ptr.
 
-  if (terminals[cur_terminal].current_running_pid == 0) {
+  if (terminals[cur_terminal_displayed].current_running_pid == 0) {
     // then no task is running, set itself as parent task
     t->parent_process_task_id = new_pid;
   }
-    // update the terminal to say that this is currently running pid
   else {
     // otherwise there is as process already running in this terminal
-    t->parent_process_task_id = terminals[cur_terminal].current_running_pid;
+    t->parent_process_task_id = terminals[cur_terminal_displayed].current_running_pid;
   }
 
   // regardless, set the current running process in this terminal 
   // to new process pid 
-  terminals[cur_terminal].current_running_pid = new_pid;
+  terminals[cur_terminal_displayed].current_running_pid = new_pid;
   sti();
 
   cli();
@@ -294,12 +294,26 @@ should be inserted into the file array on the open system call (see below).
 
 */
 int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
-  task *PCB_data = get_task();
+  // task *PCB_data = get_task();
+
+  // current running process
+  uint32_t current_pid = terminals[cur_terminal_displayed].current_running_pid;
+  task *PCB_data = calculate_task_pcb_pointer(current_pid);
+
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
   }
 
+  // is the fd even open?
+  if ((PCB_data->fds[fd].flags & FD_IN_USE) == 0) {
+    // its not open, don't bother
+    return -1;
+  }
+
   // pass along argumenst to the appropriate function in jump table
+  if (PCB_data->fds[fd].jump_table.read == 0) {
+    return -1;
+  }
   int32_t ret = (int32_t)(PCB_data->fds[fd].jump_table.read(fd, buf, nbytes));
   return ret;
 }
@@ -316,12 +330,24 @@ system is read-only. The call returns the number of bytes
 written, or -1 on failure.
 */
 int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-  task *PCB_data = get_task();
+  // task *PCB_data = get_task();
+  uint32_t current_pid = terminals[cur_terminal_displayed].current_running_pid;
+  task *PCB_data = calculate_task_pcb_pointer(current_pid);
+
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
   }
 
-  // pass along argumenst to the appropriate function
+  // is the fd even open?
+  if ((PCB_data->fds[fd].flags & FD_IN_USE) == 0) {
+    // its not open, don't bother
+    return -1;
+  }
+
+  // pass along argumenst to the appropriate function if it exists
+  if (PCB_data->fds[fd].jump_table.write == 0) {
+    return -1;
+  }
   int32_t ret = PCB_data->fds[fd].jump_table.write(fd, buf, nbytes);
   return ret;
 }
@@ -352,6 +378,7 @@ int32_t sys_open(const uint8_t* filename) {
 
   // mark that file descriptor as in use
   task *cur_task = get_task();
+
   cur_task->fds[open_fd].flags |= FD_IN_USE;
 
   if (file.file_type == 1) {
@@ -432,9 +459,12 @@ int32_t sys_close(int32_t fd) {
   }
   task* cur_task = get_task();
 
-  // check to see if this fd is open for this task
-  if (cur_task->fds[fd].flags &= FD_IN_USE != 0) {
-    // call the right close function
+  // if the file descriptor is open
+  if ((cur_task->fds[fd].flags & FD_IN_USE) != 0) {
+    // call the right close function if it exists
+    if (cur_task->fds[fd].jump_table.close == 0) {
+      return -1;
+    }
     cur_task->fds[fd].jump_table.close(fd);
 
     // also set the file descriptor to initial values
@@ -448,7 +478,7 @@ int32_t sys_close(int32_t fd) {
     cur_task->fds[fd].jump_table.write = 0;
   }
   else {
-    // it's not open
+    // else it's not open
     return -1;
   }
   return 0;

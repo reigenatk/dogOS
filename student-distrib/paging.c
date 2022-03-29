@@ -65,9 +65,11 @@ void setup_paging() {
   // video mem
   // In this layout everything in the first 4MB, that isn’t the page for video memory, 
   // should be marked not present. It's B8 because it's the B8'th page that will translate
-  // to the page with base address 0xB8000. We just want to mark it present.
-
-  page_table[0xB8] |= (PRESENT_BIT | READ_WRITE_BIT); 
+  // to the page with base address 0xB8000. 
+  // Base adress was already assigned in the for loop above, as was read/write.
+  // We just want to mark it present.
+  
+  page_table[0xB8] |= (PRESENT_BIT);
 
   // I tried doing this in one big asm volatile but it wouldn't work for some reason
   // turn on paging by setting CR3 to the page directory's address

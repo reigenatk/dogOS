@@ -201,7 +201,7 @@ __attribute__((interrupt)) void keyboard_INT() {
   // no more processor interrupts (extra keypresses disabled)
   cli();
 
-  terminal_t* terminal = &terminals[cur_terminal];
+  terminal_t* terminal = &terminals[cur_terminal_displayed];
 
   uint8_t keycode = 0; // keycodes range from 0x0-0x60 ish, let's use 0 which is error code normally to indicate we haven't received anything
 	do {
@@ -246,12 +246,7 @@ __attribute__((interrupt)) void keyboard_INT() {
   }
   else {
     if (keycode <= NUM_KEYS) {
-      // valid code, process it
-
-      // if the character is not displayable, do not display
-      if (keys[keycode].should_display == 0) {
-        goto done;
-      }
+      // shortcuts before displaying
 
       // Both ctrl + l and ctrl + L should clear the screen. You should not be resetting the read buffer if the user
       // clears the screen before pressing enter while typing in terminal read
@@ -264,8 +259,9 @@ __attribute__((interrupt)) void keyboard_INT() {
       }
 
       // terminal switches (if ALT + F1, F2 or F3)
-      if (is_alt_pressed && (keycode == KEY_F1 || keycode == KEY_F2 || keycode == KEY_F3)) {
-        
+      if ((is_alt_pressed == 1) && (keycode == KEY_F1 || keycode == KEY_F2 || keycode == KEY_F3)) {
+        // 0, 1, or 2.
+        switch_terminal(keycode - KEY_F1);
       }
 
       // press 1 key to test the RTC interrupt functionality
@@ -287,6 +283,12 @@ __attribute__((interrupt)) void keyboard_INT() {
       //   write(rtc_fd, val, 1);
       // }
 
+      // END OF SHORTCUTS
+      // if the character is not displayable, do not display
+      if (keys[keycode].should_display == 0) {
+        goto done;
+      }
+      
       uint8_t key_char = 0;
       // if shift and no caps lock
       if (is_shift_key_pressed && !is_caps_lock_toggled) {

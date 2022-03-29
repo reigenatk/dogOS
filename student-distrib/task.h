@@ -77,14 +77,20 @@ typedef struct task {
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
   uint32_t pid; // the process ID tells us all sorts of into about where the process is in memory
+  
+  // current ebp + esp
   uint32_t esp;
+  uint32_t ebp;
   uint8_t arguments[128];
 
   // store process id of the parent task which called this task.
   // if nothing called this task, set this to its own process id
   uint32_t parent_process_task_id;
 
-  // for when we call halt on this process, so we can return nicely
+  // for when we call halt on this process (i.e end it), 
+  // so we can return nicely to kernelspace
+  // these are the values of esp, ebp from the sys_execute call that spawned 
+  // this task
   uint32_t return_esp;
   uint32_t return_ebp;
   uint32_t return_eip;

@@ -43,20 +43,24 @@ task* init_task(uint32_t pid) {
 
   // initiate two open file descriptors for stdin and stdout (0 and 1)
   file_descriptor stdin, stdout;
-  jump_table_fd jt = {
+
+  // stdin is read only (keyboard input)
+  jump_table_fd stdin_jt = {
     .read = terminal_read,
-    .open = terminal_open,
+  };
+
+  // stdout is write only (terminal output)
+  jump_table_fd stdout_jt = {
     .write = terminal_write,
-    .close = terminal_close,
   };
   stdin.file_position = 0;
   stdin.flags = 1;
   stdin.inode = 0;
-  stdin.jump_table = jt;
+  stdin.jump_table = stdin_jt;
   stdout.file_position = 0;
   stdout.flags = 1;
   stdout.inode = 0;
-  stdout.jump_table = jt;
+  stdout.jump_table = stdout_jt;
 
   stdin.flags |= FD_READ_PERMS;
   stdout.flags |= FD_WRITE_PERMS;

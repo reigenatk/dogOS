@@ -3,8 +3,8 @@
 
 #include "lib.h"
 
-static int screen_x;
-static int screen_y;
+int screen_x;
+int screen_y;
 static char* video_mem = (char *)VIDEO;
 
 /* void clear(void);
@@ -165,6 +165,16 @@ void bluescreen() {
         *(uint8_t *)(video_mem + (i << 1) + 1) = WINDOWS_BLUE;
     }
 }
+// https://wiki.osdev.org/Text_Mode_Cursor
+
+void change_blinking_cursor_pos(int32_t x, int32_t y) {
+	uint16_t pos = y * NUM_COLS + x;
+ 
+	outb(0x0F, 0x3D4);
+	outb((uint8_t) (pos & 0xFF), 0x3D5);
+	outb( 0x0E, 0x3D4);
+	outb((uint8_t) ((pos >> 8) & 0xFF), 0x3D5);
+}
 
 
 void scroll_up() {
@@ -221,6 +231,10 @@ void putc(uint8_t c) {
     }
     // move cursor position
     change_blinking_cursor_pos(screen_x, screen_y);
+    // tell current terminal the position. Need to do here 
+    // since screen_x and screen_y are static
+    terminals[cur_terminal_displayed].screen_x = screen_x;
+    terminals[cur_terminal_displayed].screen_y = screen_y;
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
@@ -426,17 +440,6 @@ void* memset(void* s, int32_t c, uint32_t n) {
             : "edx", "memory", "cc"
     );
     return s;
-}
-
-// https://wiki.osdev.org/Text_Mode_Cursor
-
-void change_blinking_cursor_pos(int32_t x, int32_t y) {
-	uint16_t pos = y * NUM_COLS + x;
- 
-	outb(0x0F, 0x3D4);
-	outb((uint8_t) (pos & 0xFF), 0x3D5);
-	outb( 0x0E, 0x3D4);
-	outb((uint8_t) ((pos >> 8) & 0xFF), 0x3D5);
 }
 
 /* void* memset_word(void* s, int32_t c, uint32_t n);

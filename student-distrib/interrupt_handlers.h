@@ -3,6 +3,7 @@
 
 #include "x86_desc.h"
 #include "lib.h"
+#include "scheduler.h"
 // #include "keyboard.h"
 // #include "RTC.h"
 

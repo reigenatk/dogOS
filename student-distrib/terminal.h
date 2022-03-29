@@ -35,22 +35,25 @@ typedef struct terminal_t {
   // pointer for. 
   uint32_t current_running_pid;
 
-  // Is the terminal being shown?
-  uint32_t is_displayed;
-
-  // screen position in this terminal (again for switching)
+  // cursor screen position in this terminal (again for switching)
   uint32_t screen_x;
   uint32_t screen_y;
+
+
 
 } terminal_t;
 
 // which terminal is running? Index into terminals array. This 
 // needs to be extern so that other files can see which process is running
-extern int cur_terminal;
+extern int cur_terminal_displayed;
 
 extern terminal_t terminals[NUM_TERMINALS];
 
+// called in kernel.c, starts the first terminal with an instance of shell
 void init_terminal();
+
+// called when ALT + Function key combo pressed
+void switch_terminal(uint32_t new_terminal_idx);
 
 int32_t terminal_close(int32_t fd);
 int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes);

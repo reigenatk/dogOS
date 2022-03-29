@@ -160,6 +160,8 @@ __attribute__((interrupt)) void RTC_interrupt_handler() {
   // extra *2 because its rate-1
   if (rtc_test_counter % (HIGH_RTC_RATE / (current_RTC_rate*2)) == 0 && rtc_test_counter != 0) {
     rtc_virtual_counter++;
+    // clear the flag for read_RTC()
+    the_flag = 0;
   }
 
   write_RTC_data();
@@ -167,8 +169,6 @@ __attribute__((interrupt)) void RTC_interrupt_handler() {
   outb(0x0C, RTC_IO_PORT);
   inb(CMOS_IO_PORT);
 
-  // clear the flag for read_RTC()
-  the_flag = 0;
   sti();
 }
 

@@ -14,6 +14,7 @@
 #include "keyboard.h"
 #include "RTC.h"
 #include "filesystem.h"
+#include "scheduler.h"
 
 #define RUN_TESTS
 
@@ -180,12 +181,11 @@ void entry(unsigned long magic, unsigned long addr) {
     open_RTC("rtc");
 
     // paging
-    printf("Initializing Paging");
+    printf("Initializing Paging\n");
     setup_paging();
 
     init_terminal();
-
-    
+    init_PIT();
 
     /* Enable interrupts */
     /* Do not enasble the following until after you have set up your

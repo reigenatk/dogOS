@@ -368,8 +368,8 @@ void launch_tests(){
 	// TEST_OUTPUT("idt_offset_test", idt_offset_test());
 
 	// TEST_OUTPUT("paging_test", paging_test());
-	// // run this last
-	TEST_OUTPUT("receive_rtc_interrupt", rtc_test());
+
+	// TEST_OUTPUT("receive_rtc_interrupt", rtc_test());
 
 	// Checkpoint 2 Tests
 	TEST_OUTPUT("read_dentry_test", read_dentry_test());

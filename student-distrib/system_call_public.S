@@ -69,6 +69,7 @@ syscall_handler_wrapper:
 	push %ds
 	push %es 
 	push %fs
+	pushfl # save flags too
 
 	push %edx # push arguments in reverse order onto stack
 	push %ecx 
@@ -91,6 +92,8 @@ return_negative_one:
 	mov $-1, %eax
 return:
 	addl $12, %esp # move esp back since we pushed arguments and never pop them into anything
+	
+	popfl
 	pop %fs
 	pop %es
 	pop %ds 

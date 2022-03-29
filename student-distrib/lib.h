@@ -54,10 +54,13 @@ void change_write_head(int8_t new_x, int8_t new_y);
 // this is like puts except without change write head which is annoying sometimes
 void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y);
 void bluescreen();
-void change_blinking_cursor_pos(int32_t x, int32_t y);
+
 
 // parses a received string into two buffers, command and argument
 void parse_command(int8_t *program_name, int8_t *arguments, int8_t *command);
+
+extern int screen_x;
+extern int screen_y;
 
 /*
 Use this function to flush the TLB by reloading the CR3 register with the same value
