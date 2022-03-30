@@ -1,4 +1,6 @@
 #include "filesystem.h"
+#include "lib.h"
+#include "task.h"
 
 #define SIXTY_FOUR_BYTES 0x40
 #define FOUR_KB 0x1000

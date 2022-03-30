@@ -3,12 +3,14 @@
 
 #include "lib.h"
 
+
 #define HUNDRED_HERTZ_DIVIDER 11932
 #define CHANNEL_0 0x40
 #define COMMAND_REGISTER 0x43
 #define HIGH_EIGHT_BITS 0xFF00
-#define LOW_EIGHT_BITS 0x00FF
+#define LOW_EIGHT_BITS 0xFF
 #define MODE_3 0x06
+#define MODE_2 0x04
 #define LOWBYTE_HIGHBYTE 0x30
 #define TIMER_IRQ_NUM 0
 /*

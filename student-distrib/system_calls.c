@@ -1,4 +1,12 @@
 #include "system_calls.h"
+#include "lib.h"
+#include "filesystem.h"
+#include "RTC.h"
+#include "keyboard.h"
+#include "task.h"
+#include "paging.h"
+#include "x86_desc.h"
+#include "terminal.h"
 
 // these are the actual system calls
 // since definition doubles as a declaration and a definition
@@ -18,11 +26,10 @@ int32_t sys_halt(uint8_t status) {
   // critical code, no interrupts
   cli();
 
-  // get the current process
-  uint32_t current_task_pid = terminals[cur_terminal_displayed].current_running_pid;
-  task* current_running_task = (task*) (calculate_task_pcb_pointer(current_task_pid));
+  task* current_running_task = get_task_in_running_terminal();;
+  uint32_t current_task_pid = current_running_task->pid;
   uint32_t parent_task_pid = current_running_task->parent_process_task_id;
-  // task *parent_task_ptr = (task*) (calculate_task_pcb_pointer(parent_task_pid));
+  task *parent_task_ptr = (task*) (calculate_task_pcb_pointer(parent_task_pid));
 
 
   // otherwise its closing a process and returning to another
@@ -40,32 +47,29 @@ int32_t sys_halt(uint8_t status) {
   // no need to do anything else, all the other task fields get over-written
   // on a second call to execute()
   
-  // free up the space in the process ID array 
-  // by saying this process ID is free for use
+
+  // "destroy the task by freeing up the space in the process ID array "
   running_process_ids[current_task_pid] = 0;
 
-  // compare the task pid's, if the same then we know its the only running process
-  // we also know it was shell, which is by default the first process started
-  // on each terminal. So we will just execute a new shell
-  if (current_task_pid == parent_task_pid) {
-    execute((uint8_t*) "shell");
+  // also update the terminal with that info
+  terminals[cur_terminal_running].num_processes_running--;
+
+  // now if we have nothing leftover in this terminal again we know we just got rid of the shell
+  // so just re-run it
+  if (terminals[cur_terminal_running].num_processes_running == 0) {
+    printf("restarting terminal\n");
+    execute("shell");
   }
 
-  // tell the terminal the right currently running process id
-  terminals[cur_terminal_displayed].current_running_pid = parent_task_pid;
+  // otherwise we switch to the parent task 
+  map_process_mem(parent_task_pid);
 
-  // map the page directory entry for 0x08000000 -> 0x08400000
-  // to point to the page of the parent process. Just like we did in 
-  // execute, but this time we just use the old parent pid
-  uint32_t start_physical_address = calculate_task_physical_address(parent_task_pid);
-  page_directory[32] = start_physical_address | PRESENT_BIT | READ_WRITE_BIT | PAGE_SIZE_BIT | USER_BIT;
-
-  flush_tlb();
-
-  // tss cares about esp and ss, here let's just change esp to right value
+  // tss cares about esp and ss, ss stays the same
   // this is the kernel esp for the parent process, which was created in execute() call
   // for the current process
   tss.esp0 = current_running_task->return_esp;
+
+  terminals[cur_terminal_running].current_task = parent_task_ptr;
 
   sti();
   // return to old esp/ebp in the old task. Pass in status to eax,
@@ -109,6 +113,13 @@ int32_t sys_execute(const uint8_t* command) {
   parse_command((int8_t *) program_name, (int8_t *) arguments, (int8_t*) command);
   // printf("program name: %s, args: %s\n", program_name, arguments);
 
+  // look for special keywords
+  // if (strncmp("exit", program_name, 4) == 0) {
+  //   // end the currently running program
+  //   asm volatile("call halt;");
+  //   return;
+  // }
+
   // look for program's dentry_t struct
   dentry_t program;
   if (read_dentry_by_name((uint8_t*)program_name, &program) == -1) {
@@ -136,6 +147,7 @@ int32_t sys_execute(const uint8_t* command) {
     return -1;
   }
 
+
   /*
   The other important bit of information that you need 
   to execute programs is the entry point into the
@@ -153,32 +165,32 @@ int32_t sys_execute(const uint8_t* command) {
   printf("program entry: 0x%x\n", entry_point);
   int32_t new_pid = get_new_process_id();
   if (new_pid == -1) {
+    // too many processes
+    printf("Too many processes, %d running already\n", MAX_TASKS);
     return -1;
   }
+
+  // AT THIS POINT WE KNOW WE WILL RUN THE PROCESS, ALL CHECKS COMPLETE
+  
   task* t = init_task(new_pid);
 
   // copy argument information and process ID into the current task.
   strncpy((int8_t*) t->arguments, arguments, strlen(arguments));
-  t->pid = new_pid;
-  strncpy((int8_t*) t->name_of_task, program_name, 32);
+
   // name the task, 32 bits because that's max size of task name (as it says in spec)
+  strncpy((int8_t*) t->name_of_task, program_name, MAX_FILE_NAME_LENGTH);
+
+  
   printf("program name: %s\n", program_name);
   printf("program arguments: %s\n", arguments);
+
   /*
   The way to get this
   working is to set up a single 4 MB page directory entry that maps virtual address 0x08000000 (128 MB) to the right
   physical memory address (either 8 MB or 12 MB). Then, the program image must be copied to the correct offset
   (0x00048000) within that page.
   */
-  
-  uint32_t start_physical_address = calculate_task_physical_address(new_pid);
-
-  // 0x08000000 = 128 MB, and since we take first 10 bits its 0000 | 1000 | 00, aka 32th entry
-  // in the page directory table. We need this to be a 4MB page, and also a user page (cuz its a user process' memory)
-  page_directory[32] = start_physical_address | PRESENT_BIT | READ_WRITE_BIT | PAGE_SIZE_BIT | USER_BIT;
-  // must flush to inform the TLB of new changes to paging structures. Because 
-  // otherwise the processor will use the (wrong) page cache
-  flush_tlb();
+  map_process_mem(new_pid);
 
   // copy the executable to the task's page in memory at offset 0x48000. Since we just mapped the memory, we can 
   // now virtual address 0x08048000 will be translated into 0x800000 + 0x48000 
@@ -205,43 +217,42 @@ int32_t sys_execute(const uint8_t* command) {
   // also we need -4 here because 8MB virtual doesn't use the right page directory entry
   tss.esp0 = KERNEL_MEM_BOTTOM - ((new_pid-1) * TASK_STACK_SIZE) - 4;
 
-
-  asm volatile(
-    "movl %%ebp, %0;"
-    "movl %%esp, %1;"
-    :"=r"(t->return_ebp), "=r"(t->return_esp) 
-  );
-
-  // save current process' esp + ebp so that child can return nicely later
-  // t->return_ebp = save_ebp();
-  // t->return_esp = save_esp();
-
   /*
   Finally, when a new task is started with the execute system call, 
   you’ll need to store the parent task’s PCB pointer in the child 
   task’s PCB so that when the child program calls halt, you 
   are able to return control to the parent task.
   */
+  asm volatile(
+    "movl %%ebp, %0;"
+    "movl %%esp, %1;"
+    :"=r"(t->return_ebp), "=r"(t->return_esp) 
+  );
 
   // if any other tasks are running in this terminal, then set 
   // that task's ptr as the parent task. Otherwise set its own 
   // task ptr as its parent ptr.
 
-  if (terminals[cur_terminal_displayed].current_running_pid == 0) {
+
+
+  if (terminals[cur_terminal_running].num_processes_running == 0) {
     // then no task is running, set itself as parent task
     t->parent_process_task_id = new_pid;
+    t->ebp = terminals[cur_terminal_running].current_task->ebp;
+    t->esp = terminals[cur_terminal_running].current_task->esp;
   }
   else {
     // otherwise there is as process already running in this terminal
-    t->parent_process_task_id = terminals[cur_terminal_displayed].current_running_pid;
+    t->parent_process_task_id = terminals[cur_terminal_running].current_task->pid;
   }
 
-  // regardless, set the current running process in this terminal 
-  // to new process pid 
-  terminals[cur_terminal_displayed].current_running_pid = new_pid;
-  sti();
+  // regardless, set the current running task FOR THE TERMINAL to this new task we made
+  terminals[cur_terminal_running].current_task = t;
 
-  cli();
+
+  // and increment the count for how many tasks we have running in said terminal
+  terminals[cur_terminal_running].num_processes_running++;
+
   // asm volatile(
   //   "cli;"
   //   "mov $0x2B, %%ax;"
@@ -297,8 +308,7 @@ int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
   // task *PCB_data = get_task();
 
   // current running process
-  uint32_t current_pid = terminals[cur_terminal_displayed].current_running_pid;
-  task *PCB_data = calculate_task_pcb_pointer(current_pid);
+  task *PCB_data = get_task_in_running_terminal();;
 
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
@@ -310,7 +320,7 @@ int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
     return -1;
   }
 
-  // pass along argumenst to the appropriate function in jump table
+  // pass along argumenst to the appropriate function in jump table (if exists)
   if (PCB_data->fds[fd].jump_table.read == 0) {
     return -1;
   }
@@ -330,9 +340,7 @@ system is read-only. The call returns the number of bytes
 written, or -1 on failure.
 */
 int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-  // task *PCB_data = get_task();
-  uint32_t current_pid = terminals[cur_terminal_displayed].current_running_pid;
-  task *PCB_data = calculate_task_pcb_pointer(current_pid);
+  task *PCB_data = get_task_in_running_terminal();;
 
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
@@ -376,10 +384,13 @@ int32_t sys_open(const uint8_t* filename) {
     return -1;
   }
 
-  // mark that file descriptor as in use
-  task *cur_task = get_task();
+  // get current terminal's active task
+  task *cur_task = get_task_in_running_terminal();;
 
+  // mark the fd for that task as in use
   cur_task->fds[open_fd].flags |= FD_IN_USE;
+  // set the position back to 0 if you re-open a file
+  cur_task->fds[open_fd].file_position = 0;
 
   if (file.file_type == 1) {
     // directory
@@ -457,14 +468,15 @@ int32_t sys_close(int32_t fd) {
     // doesn't exist or is special
     return -1;
   }
-  task* cur_task = get_task();
+  task* cur_task = get_task_in_running_terminal();;
 
   // if the file descriptor is open
   if ((cur_task->fds[fd].flags & FD_IN_USE) != 0) {
-    // call the right close function if it exists
+    
     if (cur_task->fds[fd].jump_table.close == 0) {
       return -1;
     }
+    // call the right close function if it exists
     cur_task->fds[fd].jump_table.close(fd);
 
     // also set the file descriptor to initial values
@@ -499,7 +511,7 @@ int32_t sys_getargs(uint8_t* buf, int32_t nbytes) {
   if (buf == 0) {
     return -1;
   }
-  task *cur_task = get_task();
+  task *cur_task = get_task_in_running_terminal();
   if (strlen((int8_t*) &(cur_task->arguments)) + 1 > nbytes) {
     return -1;
   }
@@ -528,7 +540,7 @@ int32_t sys_vidmap(uint8_t** screen_start) {
   // address range of this task can be calculated if we find the process id, and then 
   // we know its 4MB page offsets from 8MB which was the kernel page
 
-  task *PCB_data = get_task();
+  task *PCB_data = get_task_in_running_terminal();
   uint32_t pid = PCB_data->pid;
   uint32_t start_of_memory = calculate_task_physical_address(pid);
   uint32_t end_of_memory = start_of_memory + FOURMB;

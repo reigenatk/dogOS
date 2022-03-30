@@ -1,7 +1,12 @@
 #include "terminal.h"
+#include "lib.h"
+#include "system_calls.h"
+#include "task.h"
+#include "paging.h"
 
 terminal_t t;
 int cur_terminal_displayed = 0;
+int cur_terminal_running = 0;
 terminal_t terminals[NUM_TERMINALS];
 
 // i = the terminal 
@@ -17,36 +22,49 @@ void init_terminal() {
   int i;
   for (i = 0; i < NUM_TERMINALS; i++) {
     // let current running pid of 0 mean no task is running
-    terminals[i].current_running_pid = 0;
+    terminals[i].current_task = 0;
     clear_terminal_line_buffer(i);
     terminals[i].line_buffer_idx = 0;
     terminals[i].newline_received = 0;
     terminals[i].screen_x = 0;
     terminals[i].screen_y = 0;
-    int j, k;
-    // clear all the screen information for each terminal
-    for (j = 0; j < NUM_ROWS; j++) {
-      for (k = 0; k < NUM_COLS; k++) {
-        uint32_t idx = j * NUM_COLS + k;
-        terminals[i].screen[idx << 1] = ' ';
-        terminals[i].screen[(idx << 1) + 1] = ATTRIB;
-      }
-    }
+    terminals[i].num_processes_running = 0;
+
+    // terminal 0: 0xB9000, terminal 1 : 0xBA000, terminal 2: 0xBB000
+    terminals[i].video_mem_start = (uint8_t *)VIDEO + FOURKB * (i + 1);
+    memset((uint8_t *)terminals[i].video_mem_start, 0, NUM_COLS * NUM_ROWS * 2);
   }
   // spawn an instance of shell in this terminal
   // execute should be smart enough to assign current running process 
   // on this terminal to the pid of the newly made process for shell
-  // execute("shell");
-  cur_terminal_displayed = 0;
+  // cur_terminal_displayed = 0;
   execute("shell");
 }
 
+/*
+  Saves the screen state of cur_terminal_displayed into the terminal object 
+*/
 void save_terminal_state() {
   // save the old video memory. We do it lazily, meaning only once we are about 
   // to switch terminals do we save the state of the current one
-  memcpy((int8_t *)&terminals[cur_terminal_displayed].screen, (int8_t *)VIDEO, NUM_COLS * NUM_ROWS * 2);
+  memcpy((int8_t *)&terminals[cur_terminal_displayed].video_mem_start, (int8_t *)VIDEO, NUM_COLS * NUM_ROWS * 2);
   terminals[cur_terminal_displayed].screen_x = (uint32_t) screen_x;
   terminals[cur_terminal_displayed].screen_y = (uint32_t) screen_y;
+
+}
+
+
+
+/*
+  Writes the screen information from terminal cur_terminal_displayed into video 
+  memory
+*/
+void rewrite_video_state() {
+  // rewrite video memory from new terminal to video mem
+  memcpy((int8_t *) VIDEO, (int8_t *) &terminals[cur_terminal_displayed].video_mem_start, NUM_COLS * NUM_ROWS * 2);
+
+  // change cursor position (this will move blinking and also set screen_x and screen_y)
+  change_write_head((int8_t) terminals[cur_terminal_displayed].screen_x, (int8_t) terminals[cur_terminal_displayed].screen_y);
 }
 
 /*
@@ -58,51 +76,24 @@ addresses to point to the video memory’s physical address.
 TLDR: two pieces of state we need to restore, cursor position and video mem
 
 Also another big point: switching to a terminal should re-execute that terminal's 
-active process
+active process. IF this terminal is being accessed for the first time, it 
+should spawn a shell for this terminal
 */
+
+// changes the video on screen to new_terminal_idx
 void switch_terminal(uint32_t new_terminal_idx) {
+
   // if we are switching to current terminal we are on, just return
   if (new_terminal_idx == cur_terminal_displayed) {
     return;
   }
 
+  // restore video map
+  // map_video_mem(0);
+
   save_terminal_state();
-  // change terminal idx
   cur_terminal_displayed = new_terminal_idx;
-
-  // rewrite video memory from new terminal to real video mem
-  memcpy((int8_t *) VIDEO, (int8_t *) &terminals[cur_terminal_displayed].screen, NUM_COLS * NUM_ROWS * 2);
-
-  // change cursor position (this will move blinking and also set screen_x and screen_y)
-  change_write_head((int8_t) terminals[cur_terminal_displayed].screen_x, (int8_t) terminals[cur_terminal_displayed].screen_y);
-
-  /*
-  // if terminal does not have shell yet, spawn shell
-  if (terminals[new_terminal_idx].current_running_pid == 0) {
-    save_terminal_state();
-    task * t = calculate_task_pcb_pointer(cur_terminal_displayed);
-    // save old ebp/esp
-    asm volatile(
-      "movl %%esp, %0;"
-      "movl %%ebp, %1;"
-      : "=r"(t->esp), "=r"(t->ebp)
-    );
-    cur_terminal_displayed = new_terminal_idx;
-    execute("shell");
-  }
-  else {
-    // terminal already has a process on it so we just have to switch
-    save_terminal_state();
-    // change terminal idx
-    cur_terminal_displayed = new_terminal_idx;
-
-    // rewrite video memory from new terminal to real video mem
-    memcpy((int8_t *) VIDEO, (int8_t *) &terminals[cur_terminal_displayed].screen, NUM_COLS * NUM_ROWS * 2);
-
-    // change cursor position (this will move blinking and also set screen_x and screen_y)
-    change_write_head((int8_t) terminals[cur_terminal_displayed].screen_x, (int8_t) terminals[cur_terminal_displayed].screen_y);
-  }*/
-
+  rewrite_video_state();
 }
 
 int32_t terminal_close(int32_t fd) {
@@ -122,39 +113,41 @@ Backspace on the new line should go back to the previous line as well.
 */
 int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
   // clear terminal buffer ( can read in max 127 chars cuz we need newline)
-  clear_terminal_line_buffer(cur_terminal_displayed);
+  clear_terminal_line_buffer(cur_terminal_running);
   // enable keyboard typing
   sti();
 
-  while (terminals[cur_terminal_displayed].line_buffer_idx < LINE_BUFFER_MAX_SIZE- 1 && terminals[cur_terminal_displayed].newline_received != 1)
-    ;
+  // while (get_task()->term->line_buffer_idx < LINE_BUFFER_MAX_SIZE- 1 && get_task()->term->newline_received != 1)
+  //   ;
+  while (terminals[cur_terminal_running].line_buffer_idx < LINE_BUFFER_MAX_SIZE- 1 && terminals[cur_terminal_running].newline_received != 1)
+  ;
   cli();
 
   // once we reach here, we know either buffer was full or newline 
   // was received
 
   // if buffer was full, we still have to add newline
-  if (terminals[cur_terminal_displayed].line_buffer_idx == LINE_BUFFER_MAX_SIZE - 1) {
-    terminals[cur_terminal_displayed].line_buffer[LINE_BUFFER_MAX_SIZE - 1] = '\n';
+  if (terminals[cur_terminal_running].line_buffer_idx == LINE_BUFFER_MAX_SIZE - 1) {
+    terminals[cur_terminal_running].line_buffer[LINE_BUFFER_MAX_SIZE - 1] = '\n';
   }
 
   // set enter flag to zero again
-  terminals[cur_terminal_displayed].newline_received = 0;
+  terminals[cur_terminal_running].newline_received = 0;
 
   // copy the characters into the buffer. Need -2 because we don't wanna read 
   // the newline into the buffer. We can handle formatting later but we 
   // want our buffers to only have the characters. The newline comes from the keyboard 
 
   uint32_t i;
-  for(i = 0; i < terminals[cur_terminal_displayed].line_buffer_idx - 1; i++) {
-    ((uint8_t*)buf)[i] = terminals[cur_terminal_displayed].line_buffer[i];
+  for(i = 0; i < terminals[cur_terminal_running].line_buffer_idx - 1; i++) {
+    ((uint8_t*)buf)[i] = terminals[cur_terminal_running].line_buffer[i];
   }
 
   // the number of characters read (not including newline)
-  int32_t ret = terminals[cur_terminal_displayed].line_buffer_idx - 1;
+  int32_t ret = terminals[cur_terminal_running].line_buffer_idx - 1;
 
-  // memcpy(buf, cur_terminal_displayed->line_buffer, nbytes);
-  clear_terminal_line_buffer(cur_terminal_displayed);
+  // memcpy(buf, cur_terminal_running->line_buffer, nbytes);
+  clear_terminal_line_buffer(cur_terminal_running);
   return ret;
 }
 
@@ -165,16 +158,21 @@ The call returns the number of bytes
 written, or -1 on failure.
 */
 int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes) {
+  cli();
   if ((int8_t*) buf == 0) {
     return -1;
   }
   int32_t i;
-  
-  for (i = 0; i < nbytes; i++) {
-    putc(((int8_t*) buf)[i]);
+  if (cur_terminal_displayed == cur_terminal_running) {
+    nbytes = printf(buf);
   }
+  else {
+    nbytes = printf_mem(buf);
+  }
+
   // printf((int8_t*)buf);
 
+  sti();
   return nbytes;
   
 }

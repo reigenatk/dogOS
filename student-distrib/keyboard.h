@@ -1,11 +1,7 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-#include "i8259.h"
-#include "lib.h"
-#include "RTC.h"
-#include "system_calls.h"
-#include "terminal.h"
+#include "types.h"
 
 
 void init_keyboard();

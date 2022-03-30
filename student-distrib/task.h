@@ -1,10 +1,7 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include "filesystem.h"
-#include "RTC.h"
-#include "keyboard.h"
-#include "terminal.h"
+#include "types.h"
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
@@ -73,6 +70,8 @@ typedef struct file_descriptor {
 
 // forward declare so we can use it inside its own definition
 
+
+
 typedef struct task {
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
@@ -94,6 +93,7 @@ typedef struct task {
   uint32_t return_esp;
   uint32_t return_ebp;
   uint32_t return_eip;
+
 
   // uint32_t* page_table_address;
   // // page tables and directories are of type uint32_t, so we need pointers to that
@@ -124,10 +124,11 @@ We will use IDs 1 - 6, hence the +1
 extern uint32_t running_process_ids[MAX_TASKS+1];
 
 task *get_task();
+task *get_task_in_running_terminal();
 
 int32_t get_new_process_id();
 
-
+uint32_t total_programs_running();
 
 // Given a PID, this creates a new task struct for this process and initializes stdin, stdout file
 // descriptors for it 

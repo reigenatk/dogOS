@@ -2,6 +2,8 @@
  * vim:ts=4 noexpandtab */
 
 #include "lib.h"
+#include "terminal.h"
+#include "filesystem.h"
 
 int screen_x;
 int screen_y;
@@ -145,6 +147,115 @@ format_char_switch:
     return (buf - format);
 }
 
+int32_t printf_mem(int8_t *format, ...) {
+
+    /* Pointer to the format string */
+    int8_t* buf = format;
+
+    /* Stack pointer for the other parameters */
+    int32_t* esp = (void *)&format;
+    esp++;
+
+    while (*buf != '\0') {
+        switch (*buf) {
+            case '%':
+                {
+                    int32_t alternate = 0;
+                    buf++;
+
+format_char_switch:
+                    /* Conversion specifiers */
+                    switch (*buf) {
+                        /* Print a literal '%' character */
+                        case '%':
+                            putc_mem('%');
+                            break;
+
+                        /* Use alternate formatting */
+                        case '#':
+                            alternate = 1;
+                            buf++;
+                            /* Yes, I know gotos are bad.  This is the
+                             * most elegant and general way to do this,
+                             * IMHO. */
+                            goto format_char_switch;
+
+                        /* Print a number in hexadecimal form */
+                        case 'x':
+                            {
+                                int8_t conv_buf[64];
+                                if (alternate == 0) {
+                                    itoa(*((uint32_t *)esp), conv_buf, 16);
+                                    puts_mem(conv_buf);
+                                } else {
+                                    int32_t starting_index;
+                                    int32_t i;
+                                    itoa(*((uint32_t *)esp), &conv_buf[8], 16);
+                                    i = starting_index = strlen(&conv_buf[8]);
+                                    while(i < 8) {
+                                        conv_buf[i] = '0';
+                                        i++;
+                                    }
+                                    puts_mem(&conv_buf[starting_index]);
+                                }
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a number in unsigned int form */
+                        case 'u':
+                            {
+                                int8_t conv_buf[36];
+                                itoa(*((uint32_t *)esp), conv_buf, 10);
+                                puts_mem(conv_buf);
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a number in signed int form */
+                        case 'd':
+                            {
+                                int8_t conv_buf[36];
+                                int32_t value = *((int32_t *)esp);
+                                if(value < 0) {
+                                    conv_buf[0] = '-';
+                                    itoa(-value, &conv_buf[1], 10);
+                                } else {
+                                    itoa(value, conv_buf, 10);
+                                }
+                                puts_mem(conv_buf);
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a single character */
+                        case 'c':
+                            putc_mem((uint8_t) *((int32_t *)esp));
+                            esp++;
+                            break;
+
+                        /* Print a NULL-terminated string */
+                        case 's':
+                            puts_mem(*((int8_t **)esp));
+                            esp++;
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+                break;
+
+            default:
+                putc_mem(*buf);
+                break;
+        }
+        buf++;
+    }
+    return (buf - format);
+}
+
 /* int32_t puts(int8_t* s);
  *   Inputs: int_8* s = pointer to a string of characters
  *   Return Value: Number of bytes written
@@ -153,6 +264,15 @@ int32_t puts(int8_t* s) {
     register int32_t index = 0;
     while (s[index] != '\0') {
         putc(s[index]);
+        index++;
+    }
+    return index;
+}
+
+int32_t puts_mem(int8_t* s) {
+    register int32_t index = 0;
+    while (s[index] != '\0') {
+        putc_mem(s[index]);
         index++;
     }
     return index;
@@ -195,6 +315,24 @@ void scroll_up() {
         *(uint8_t *)(video_mem + (idx << 1)) = ' ';
     }
 }
+void scroll_up_mem() {
+    int i, j;
+    uint32_t vid_addr = terminals[cur_terminal_running].video_mem_start;
+    for (i = 0; i < NUM_ROWS - 1; i++)
+    {
+        // move everything one line up
+        for (j = 0; j < NUM_COLS; j++) {
+            uint32_t idx = i * NUM_COLS + j;
+            uint32_t one_down = idx + NUM_COLS;
+            *(uint8_t *)(vid_addr + (idx << 1)) = *(uint8_t *)(vid_addr + (one_down << 1));
+        }
+    }
+    // bottom line should be clear
+    for (i = 0; i < NUM_COLS; i++) {
+        uint32_t idx = NUM_COLS * (NUM_ROWS - 1) + i;
+        *(uint8_t *)(vid_addr + (idx << 1)) = ' ';
+    }
+}
 
 /* void putc(uint8_t c);
  * Inputs: uint_8* c = character to print
@@ -235,6 +373,47 @@ void putc(uint8_t c) {
     // since screen_x and screen_y are static
     terminals[cur_terminal_displayed].screen_x = screen_x;
     terminals[cur_terminal_displayed].screen_y = screen_y;
+}
+
+void putc_mem(uint8_t c) {
+    uint32_t vid_addr = terminals[cur_terminal_running].video_mem_start;
+    // where is the cursor in this off-screen terminal?
+    int mem_y = terminals[cur_terminal_running].screen_y;
+    int mem_x = terminals[cur_terminal_running].screen_x;
+    if (c == '\n' || c == '\r')
+    {
+        if (mem_y = NUM_ROWS - 1) {
+            // then we were at last line, scroll up
+            scroll_up_mem();
+        }
+        else {
+            mem_y++;
+            mem_x = 0;
+        }
+    }
+    else
+    {
+        *(uint8_t *)(vid_addr + ((NUM_COLS * mem_y + mem_x) << 1)) = c;
+        *(uint8_t *)(vid_addr + ((NUM_COLS * mem_y + mem_x) << 1) + 1) = ATTRIB;
+        if (mem_x == NUM_COLS - 1 && mem_y == NUM_ROWS - 1) {
+            // if we are in bottom right corner then scroll up
+            scroll_up_mem();
+        }
+        else {
+            // this handles case where we are at rightmost column
+            if (mem_x == NUM_COLS - 1) {
+                mem_x = 0;
+                mem_y++;
+            }
+            else {
+                // otherwise just move x
+                mem_x++;
+            }
+        }
+    }
+    // save new cursor position into terminal as well
+    terminals[cur_terminal_displayed].screen_x = mem_x;
+    terminals[cur_terminal_displayed].screen_y = mem_y;
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);

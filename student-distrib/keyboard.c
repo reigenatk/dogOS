@@ -1,5 +1,9 @@
 #include "keyboard.h"
-  
+#include "i8259.h"
+#include "lib.h"
+#include "RTC.h"
+#include "system_calls.h"
+#include "terminal.h"
 
 
 #define KEYBOARD_PORT 0x60
@@ -239,8 +243,7 @@ __attribute__((interrupt)) void keyboard_INT() {
       terminal->line_buffer[terminal->line_buffer_idx] = '\0';
       terminal->line_buffer_idx--;
 
-      // don't do a backspace (moving cursor position) unless there was a key in the buffer
-      // this prevents us from going back to lines that we already wrote
+      // move cursor too
       do_backspace();
     }
   }

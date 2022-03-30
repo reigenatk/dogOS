@@ -1,13 +1,7 @@
 #ifndef SYSTEM_CALL_H
 #define SYSTEM_CALL_H
 #include "types.h"
-#include "lib.h"
-#include "filesystem.h"
-#include "RTC.h"
-#include "keyboard.h"
-#include "task.h"
-#include "paging.h"
-#include "x86_desc.h"
+
 
 void syscall_interrupt_handler(uint32_t syscall_no, uint32_t arg1, 
   uint32_t arg2, uint32_t arg3);

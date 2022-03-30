@@ -2,19 +2,23 @@
 #define ASM 1
 
 # let the wrapper functions be globally seen
-.globl keyboard_handler_wrapper, rtc_handler_wrapper
+.globl keyboard_handler_wrapper, rtc_handler_wrapper, pit_handler_wrapper
 
 # wouldn't work unless I added an IRET. Needed to do this because otherwise it would 
 # generate general protection exception. 
 # https://wiki.osdev.org/Interrupt_Service_Routines- just add an ASM wrapper so 
 # the function prologue (leave, ret) doesn't get called. We only need IRET here
-keyboard_handler_wrapper:													
-	call keyboard_INT													
+keyboard_handler_wrapper:											
+	call keyboard_INT						
 	iret									
 
-rtc_handler_wrapper:							
-	call RTC_interrupt_handler						
-	iret		
+rtc_handler_wrapper:					
+	call RTC_interrupt_handler																
+	iret	
+
+pit_handler_wrapper:		
+	call pit_interrupt_handler										
+	iret	
 
 # #define INTEL_WRAPPER_FUNC(wrapper_name, name) \
 # .globl wrapper_name														 \

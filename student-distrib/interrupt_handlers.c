@@ -1,4 +1,7 @@
 #include "interrupt_handlers.h"
+#include "x86_desc.h"
+#include "lib.h"
+
 
 // this is standard interrupt vector for keyboard, as seen in the course notes. It's also IRQ1 on master PIC.
 #define TIMER_CHIP_INTERRUPT_VECTOR 0x20
@@ -90,7 +93,7 @@ void add_interrupt_handler_functions() {
   SET_IDT_ENTRY(idt[18], machine_check_exception);
   SET_IDT_ENTRY(idt[19], simd_fp_exception);
 
-  SET_IDT_ENTRY(idt[TIMER_CHIP_INTERRUPT_VECTOR], pit_interrupt_handler);
+  SET_IDT_ENTRY(idt[TIMER_CHIP_INTERRUPT_VECTOR], pit_handler_wrapper);
   SET_IDT_ENTRY(idt[KEYBOARD_INTERRUPT_VECTOR], keyboard_handler_wrapper);
   SET_IDT_ENTRY(idt[RTC_INTERRUPT_VECTOR], rtc_handler_wrapper);
 

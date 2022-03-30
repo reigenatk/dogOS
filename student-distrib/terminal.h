@@ -2,14 +2,15 @@
 #define TERMINAL_H
 
 #include "types.h"
-#include "lib.h"
-#include "system_calls.h"
+#include "task.h"
 
 #define LINE_BUFFER_MAX_SIZE 128
 #define NUM_TERMINALS 3
 
 // page directory entry 0000 0010 00 -> 8
 #define TERMINAL_VIDEO_VIRTUAL_ADDRESS 0x2000000
+
+struct task;
 
 /*
 In order to support the notion of a terminal, you must have a 
@@ -20,32 +21,35 @@ the correctstate. Switching between terminals is equivalent to
 switching between the associated active tasks of the terminals.
 */
 typedef struct terminal_t {
-  // line buffer for line-buffered input
-  uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
-  uint32_t line_buffer_idx;
+  // line buffer for line-buffered input, and its index
+  volatile uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
+  volatile uint32_t line_buffer_idx;
 
   // actual entire screen (for when we switch terminals)
-  uint8_t screen[NUM_ROWS * NUM_COLS * 2];
-  
+  uint32_t video_mem_start;
+
   // for terminal_read, set whenever user types enter
   uint8_t newline_received;
 
-  // since each terminal can run one task only, we store which task 
-  // it is running using its pid, which we can easily find the task 
-  // pointer for. 
-  uint32_t current_running_pid;
+  // since each terminal can run one task only, we store a pointer 
+  // to the currently running task here
+  task* current_task;
 
   // cursor screen position in this terminal (again for switching)
   uint32_t screen_x;
   uint32_t screen_y;
 
-
+  uint32_t num_processes_running;
 
 } terminal_t;
 
-// which terminal is running? Index into terminals array. This 
+// which terminal is displayed? Index into terminals array. This 
 // needs to be extern so that other files can see which process is running
 extern int cur_terminal_displayed;
+
+// which terminal is running? This will be used by the scheduler to 
+// write output to terminals that aren't being displayed
+extern int cur_terminal_running;
 
 extern terminal_t terminals[NUM_TERMINALS];
 

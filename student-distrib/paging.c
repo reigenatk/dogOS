@@ -1,5 +1,6 @@
 #include "paging.h"
 #include "lib.h"
+#include "task.h"
 
 uint32_t page_directory[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 
@@ -68,8 +69,13 @@ void setup_paging() {
   // to the page with base address 0xB8000. 
   // Base adress was already assigned in the for loop above, as was read/write.
   // We just want to mark it present.
-  
-  page_table[0xB8] |= (PRESENT_BIT);
+
+  page_table[VIDEO_MEM_PAGE_TABLE_ENTRY] |= (PRESENT_BIT | USER_BIT);
+
+  // these three entries are for each of the three terminals, each a 4KB offset higher than real video mem
+  page_table[VIDEO_MEM_PAGE_TABLE_ENTRY + 1] |= (PRESENT_BIT | USER_BIT);
+  page_table[VIDEO_MEM_PAGE_TABLE_ENTRY + 2] |= (PRESENT_BIT | USER_BIT);
+  page_table[VIDEO_MEM_PAGE_TABLE_ENTRY + 3] |= (PRESENT_BIT | USER_BIT);
 
   // I tried doing this in one big asm volatile but it wouldn't work for some reason
   // turn on paging by setting CR3 to the page directory's address
@@ -109,6 +115,31 @@ void setup_paging() {
 // }
 
 
+// void map_video_mem(uint32_t terminal_no) {
+//   if (cur_terminal_displayed == cur_terminal_running) {
+//     // then map 0xB8000 to 0xB8000 because once we switch off this terminal all the screen will be
+//     // written back into memory correctly anyways
+//     page_table[VIDEO_MEM_PAGE_TABLE_ENTRY] = (VIDEO | PRESENT_BIT | USER_BIT | READ_WRITE_BIT);
+//   }
+//   else {
+//     // otherwise, we know we aren't writing to the terminal current displayed on screen, so map 
+//     // this directly into where it should go.
+//     page_table[VIDEO_MEM_PAGE_TABLE_ENTRY] = ((VIDEO + (terminal_no+1) * FOURKB) | PRESENT_BIT | USER_BIT | READ_WRITE_BIT);
+//   }
+//   flush_tlb();
+// }
+
+// 0x08000000 = 128 MB, and since we take first 10 bits its 0000 | 1000 | 00, aka 32th entry
+// in the page directory table. We need this to be a 4MB page, and also a user page (cuz its a user process' memory)
+void map_process_mem(uint32_t pid) {
+  // remap the virtual memory at 0x8000000 to the right 4MB page for this task
+  uint32_t start_physical_address = calculate_task_physical_address(pid);
+  page_directory[32] = start_physical_address | PRESENT_BIT | READ_WRITE_BIT | PAGE_SIZE_BIT | USER_BIT;
+
+  // must flush to inform the TLB of new changes to paging structures. Because 
+  // otherwise the processor will use the (wrong) page cache
+  flush_tlb();
+}
 
 /*
 Page/Page Table base address, bits 12 through 32

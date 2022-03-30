@@ -174,6 +174,8 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Initializing PIC");
     i8259_init();
 
+    sti();
+
     // devices (Keyboard + RTC)
     printf("Initializing Keyboard\n");
     init_keyboard();
@@ -185,15 +187,21 @@ void entry(unsigned long magic, unsigned long addr) {
     setup_paging();
 
     init_terminal();
+
+    printf("Initializing PIT\n");
     init_PIT();
+
+    // launch first terminal
+
+    
 
     /* Enable interrupts */
     /* Do not enasble the following until after you have set up your
         * IDT correctly otherwise QEMU will triple fault and simple close
         * without showing you any output */
-
+    
     printf("Enabling Interrupts\n");
-    sti();
+    
 
 #ifdef RUN_TESTS
     /* Run tests */

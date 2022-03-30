@@ -1,11 +1,26 @@
 #include "task.h"
 #include "paging.h"
+#include "filesystem.h"
+#include "RTC.h"
+#include "keyboard.h"
+#include "terminal.h"
 
 
 
 // start this with no running tasks at all. We start counting at PID = 1.
 uint32_t running_process_ids[MAX_TASKS+1] = {0, 0, 0, 0, 0, 0, 0};
 static uint32_t next_process_num = 1;
+
+uint32_t total_programs_running() {
+  int i = 1;
+  uint32_t res = 0;
+  for (; i <= MAX_TASKS; i++) {
+    if (running_process_ids[i] != 0) {
+      res++;
+    }
+  }
+  return res;
+}
 
 int32_t get_new_process_id() {
   int i = 1;
@@ -39,6 +54,8 @@ task* init_task(uint32_t pid) {
   In other words, this points to an address in kernel memory, we cast it to type (task*) so 
   that we can access the different values in a task struct
   */
+
+  // put this task ptr at a very specific address
   task* task_pcb = (task*) calculate_task_pcb_pointer(pid);
 
   // initiate two open file descriptors for stdin and stdout (0 and 1)
@@ -68,6 +85,11 @@ task* init_task(uint32_t pid) {
   // these should do a deep copy? IF not then just get rid of the file_descirptor stuff
   task_pcb->fds[0] = stdin;
   task_pcb->fds[1] = stdout;
+
+  task_pcb->pid = pid;
+
+  task_pcb->esp = 0;
+  task_pcb->ebp = 0;
 
 
   // create page table and directory for this process. we will put it at the very top 
@@ -116,9 +138,13 @@ task *get_task() {
   return ret;
 }
 
+task* get_task_in_running_terminal() {
+  return terminals[cur_terminal_running].current_task;
+}
+
 int32_t find_unused_fd() {
   int32_t i;
-  task *cur_task = get_task();
+  task *cur_task = terminals[cur_terminal_running].current_task;
   for (i = 0; i < 8; i++) {
     file_descriptor f = cur_task->fds[i];
     uint32_t flags = f.flags;

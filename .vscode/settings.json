@@ -17,6 +17,8 @@
     "xlocbuf": "c",
     "xiosbase": "c",
     "terminal.h": "c",
-    "scheduler.h": "c"
+    "scheduler.h": "c",
+    "task.h": "c",
+    "x86_desc.h": "c"
   }
 }

@@ -1,8 +1,6 @@
 #ifndef FILESYS_H
 #define FILESYS_H
 #include "types.h"
-#include "lib.h"
-#include "task.h"
 
 #define MAX_FILE_NAME_LENGTH 32
 #define BYTES_RESERVED 24

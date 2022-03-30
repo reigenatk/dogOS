@@ -13,6 +13,7 @@
 #define USER_BIT 0x00000004 
 #define CR4_MASK 0x00000010
 #define CR0_MASK 0x80000000
+#define VIDEO_MEM_PAGE_TABLE_ENTRY 0xB8
 
 #include "types.h"
 #include "lib.h"
@@ -20,6 +21,20 @@
 
 
 void setup_paging();
+
+// /*
+// map 0xB8000 to either 0xB8000 if the current visible terminal = the terminal that is running
+// or map 0xB8000 to one of 0xB9000, 0xBA000, or 0xBB000 which is not the current displayed terminal
+// */
+// void map_video_mem(uint32_t terminal_no);
+
+/*
+Maps a 4MB page for process memory
+pid = 1 : 0x8000000 -> 0x80000 (8MB)
+pid = 2 : 0x8000000 -> 0xC0000 (12MB)
+so on...
+*/
+void map_process_mem(uint32_t pid);
 
 // very similar to setup_paging, just initializes the page directory so it has 
 // one entry to the process page table, and initializes the process page table

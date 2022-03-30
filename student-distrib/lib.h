@@ -5,6 +5,9 @@
 #ifndef _LIB_H
 #define _LIB_H
 
+#include "types.h"
+
+
 // about 736KB (753644) which gets mapped to same physical address
 // since we mapped first 8MB directly
 #define VIDEO       0xB8000 
@@ -22,13 +25,14 @@ depends on how you (or the BIOS) configured the hardware
 #define NUM_ROWS    25
 #define ATTRIB      0x7 // lightgrey-on-black (DOS default)
 
-#include "types.h"
-#include "terminal.h"
-#include "filesystem.h"
+
 
 int32_t printf(int8_t *format, ...);
+int32_t printf_mem(int8_t *format, ...);
 void putc(uint8_t c);
+void putc_mem(uint8_t c);
 int32_t puts(int8_t *s);
+int32_t puts_mem(int8_t *s);
 int8_t *itoa(uint32_t value, int8_t* buf, int32_t radix);
 int8_t *strrev(int8_t* s);
 uint32_t strlen(const int8_t* s);
