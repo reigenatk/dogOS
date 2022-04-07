@@ -8,16 +8,22 @@
 # generate general protection exception. 
 # https://wiki.osdev.org/Interrupt_Service_Routines- just add an ASM wrapper so 
 # the function prologue (leave, ret) doesn't get called. We only need IRET here
-keyboard_handler_wrapper:											
-	call keyboard_INT						
+keyboard_handler_wrapper:
+	cli											
+	call keyboard_INT
+	sti						
 	iret									
 
-rtc_handler_wrapper:					
+rtc_handler_wrapper:			
+  cli			
 	call RTC_interrupt_handler																
+	sti
 	iret	
 
 pit_handler_wrapper:		
+	cli
 	call pit_interrupt_handler										
+	sti
 	iret	
 
 # #define INTEL_WRAPPER_FUNC(wrapper_name, name) \

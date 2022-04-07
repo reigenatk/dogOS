@@ -68,10 +68,6 @@ typedef struct file_descriptor {
 // the name of the task, the arguments that were passed in (which is limited by 
 // max buffer size), etc. This data goes at the start of the 8KB kernel stack for this task
 
-// forward declare so we can use it inside its own definition
-
-
-
 typedef struct task {
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
@@ -82,9 +78,9 @@ typedef struct task {
   uint32_t ebp;
   uint8_t arguments[128];
 
-  // store process id of the parent task which called this task.
-  // if nothing called this task, set this to its own process id
-  uint32_t parent_process_task_id;
+  // store ptr to parent task. IF its the first shell it will point 
+  // to the dummy one we made in the scheduler
+  struct task *parent_task;
 
   // for when we call halt on this process (i.e end it), 
   // so we can return nicely to kernelspace

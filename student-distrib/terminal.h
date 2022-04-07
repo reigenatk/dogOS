@@ -21,10 +21,6 @@ the correctstate. Switching between terminals is equivalent to
 switching between the associated active tasks of the terminals.
 */
 typedef struct terminal_t {
-  // line buffer for line-buffered input, and its index
-  volatile uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
-  volatile uint32_t line_buffer_idx;
-
   // actual entire screen (for when we switch terminals)
   uint32_t video_mem_start;
 
@@ -40,6 +36,9 @@ typedef struct terminal_t {
   uint32_t screen_y;
 
   uint32_t num_processes_running;
+  // line buffer for line-buffered input, and its index
+  uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
+  uint32_t line_buffer_idx;
 
 } terminal_t;
 

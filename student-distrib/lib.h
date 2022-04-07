@@ -63,6 +63,7 @@ void bluescreen();
 // parses a received string into two buffers, command and argument
 void parse_command(int8_t *program_name, int8_t *arguments, int8_t *command);
 
+// make these global so we can save the screen cursor position
 extern int screen_x;
 extern int screen_y;
 

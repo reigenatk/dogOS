@@ -32,3 +32,14 @@ causing the terminal_read() function to hang forever. I debugged this by using a
 between my execute + halt functions. I stepped through it using a debugger and realized
 that it was due to the use of a local variable in my execute function. So I 
 opted to replace it with inline assembly instead and it ended up working. 
+
+8. In Scheduler.c line 50, when trying to jump to another task I accidentally 
+switched esp and ebp. This was cuasing me to jump to location 0x97, which 
+was actually the contents of EFLAGS that was saved onto the stack
+before we made the PIT interrupt handler call! This confused me 
+a ton but I used gdb to figure it out eventually.
+
+9. In init_terminal() I was memsetting the entire video memory to 0x0
+which was a mistake because I forgot that each character is 2 bytes, one 
+for terminal color and one for character, so by setting to 0 I was 
+actually setting the entire screen to black! Which was a mistake!

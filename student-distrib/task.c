@@ -82,15 +82,15 @@ task* init_task(uint32_t pid) {
   stdin.flags |= FD_READ_PERMS;
   stdout.flags |= FD_WRITE_PERMS;
 
+  // set everything to 0 first
+  memset(task_pcb, 0, sizeof(task));
+
   // these should do a deep copy? IF not then just get rid of the file_descirptor stuff
   task_pcb->fds[0] = stdin;
   task_pcb->fds[1] = stdout;
 
   task_pcb->pid = pid;
-
-  task_pcb->esp = 0;
-  task_pcb->ebp = 0;
-
+  task_pcb->parent_task = terminals[cur_terminal_running].current_task;
 
   // create page table and directory for this process. we will put it at the very top 
   // of memory for the process

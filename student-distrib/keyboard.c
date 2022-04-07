@@ -258,6 +258,7 @@ __attribute__((interrupt)) void keyboard_INT() {
         // and also clear screen
         clear();
         change_write_head(0, 0);
+        printf("391OS>");
         goto done;
       }
 
@@ -314,8 +315,10 @@ __attribute__((interrupt)) void keyboard_INT() {
       // try adding to the line buffer (minus 1 because newline is at end)
       if (terminal->line_buffer_idx < LINE_BUFFER_MAX_SIZE - 1) {
         // then add it to the line buffer and print the char out
-        terminal->line_buffer[terminal->line_buffer_idx] = key_char;
-        terminal->line_buffer_idx++;
+        if (keycode != KEY_ENTER) {
+          terminal->line_buffer[terminal->line_buffer_idx] = key_char;
+          terminal->line_buffer_idx++;
+        }
         putc(key_char);
       }
       if (keycode == KEY_ENTER) {

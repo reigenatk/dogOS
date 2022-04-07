@@ -193,7 +193,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     // launch first terminal
 
-    
+    sti();
 
     /* Enable interrupts */
     /* Do not enasble the following until after you have set up your

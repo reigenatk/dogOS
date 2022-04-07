@@ -26,11 +26,10 @@ int32_t sys_halt(uint8_t status) {
   // critical code, no interrupts
   cli();
 
-  task* current_running_task = get_task_in_running_terminal();;
+  task* current_running_task = get_task_in_running_terminal();
   uint32_t current_task_pid = current_running_task->pid;
-  uint32_t parent_task_pid = current_running_task->parent_process_task_id;
-  task *parent_task_ptr = (task*) (calculate_task_pcb_pointer(parent_task_pid));
-
+  task *parent_task_ptr = current_running_task->parent_task;
+  uint32_t parent_task_pid = parent_task_ptr->pid;
 
   // otherwise its closing a process and returning to another
   // close all open files associated with the task
@@ -103,22 +102,15 @@ is that given by the program’s call to halt.
 */
 int32_t sys_execute(const uint8_t* command) {
 
-  // no interrupts
+  // no interrupts when initializing a program
   cli();
 
   // parse the program name + Arguments
-  int8_t program_name[MAX_FILE_NAME_LENGTH+1];
+  int8_t program_name[LINE_BUFFER_MAX_SIZE+1];
   int8_t arguments[LINE_BUFFER_MAX_SIZE+1];
 
   parse_command((int8_t *) program_name, (int8_t *) arguments, (int8_t*) command);
   // printf("program name: %s, args: %s\n", program_name, arguments);
-
-  // look for special keywords
-  // if (strncmp("exit", program_name, 4) == 0) {
-  //   // end the currently running program
-  //   asm volatile("call halt;");
-  //   return;
-  // }
 
   // look for program's dentry_t struct
   dentry_t program;
@@ -237,13 +229,14 @@ int32_t sys_execute(const uint8_t* command) {
 
   if (terminals[cur_terminal_running].num_processes_running == 0) {
     // then no task is running, set itself as parent task
-    t->parent_process_task_id = new_pid;
+    
     t->ebp = terminals[cur_terminal_running].current_task->ebp;
     t->esp = terminals[cur_terminal_running].current_task->esp;
   }
   else {
     // otherwise there is as process already running in this terminal
-    t->parent_process_task_id = terminals[cur_terminal_running].current_task->pid;
+    t->ebp = 0;
+    t->esp = 0;
   }
 
   // regardless, set the current running task FOR THE TERMINAL to this new task we made
@@ -252,29 +245,6 @@ int32_t sys_execute(const uint8_t* command) {
 
   // and increment the count for how many tasks we have running in said terminal
   terminals[cur_terminal_running].num_processes_running++;
-
-  // asm volatile(
-  //   "cli;"
-  //   "mov $0x2B, %%ax;"
-  //   "mov %%ax, %%ds;"
-  //   "movl $0x83FFFFC, %%eax;"
-  //   "pushl $0x2B;"
-  //   "pushl %%eax;"
-  //   "pushfl;"
-  //   "popl %%edx;"
-  //   "orl $0x200, %%edx;"
-  //   "pushl %%edx;"
-  //   "pushl $0x23;"
-  //   "pushl %0;"
-  //   "iret;"
-  //   "execute_return_label:;"
-  //   "leave;"
-  //   "ret;"
-  //   :	
-  //   :"r"(entry_point)	
-  //   :"%eax","%edx"	
-  // );
-  
 
   // use 'the iret method' from the above link
   change_task(entry_point);
@@ -308,7 +278,7 @@ int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
   // task *PCB_data = get_task();
 
   // current running process
-  task *PCB_data = get_task_in_running_terminal();;
+  task *PCB_data = get_task_in_running_terminal();
 
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
@@ -340,7 +310,7 @@ system is read-only. The call returns the number of bytes
 written, or -1 on failure.
 */
 int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-  task *PCB_data = get_task_in_running_terminal();;
+  task *PCB_data = get_task_in_running_terminal();
 
   if (fd < 0 || fd > 7 || buf == 0) {
     return -1;
@@ -385,7 +355,7 @@ int32_t sys_open(const uint8_t* filename) {
   }
 
   // get current terminal's active task
-  task *cur_task = get_task_in_running_terminal();;
+  task *cur_task = get_task_in_running_terminal();
 
   // mark the fd for that task as in use
   cur_task->fds[open_fd].flags |= FD_IN_USE;
@@ -468,7 +438,7 @@ int32_t sys_close(int32_t fd) {
     // doesn't exist or is special
     return -1;
   }
-  task* cur_task = get_task_in_running_terminal();;
+  task* cur_task = get_task_in_running_terminal();
 
   // if the file descriptor is open
   if ((cur_task->fds[fd].flags & FD_IN_USE) != 0) {

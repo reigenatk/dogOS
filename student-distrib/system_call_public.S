@@ -137,10 +137,10 @@ change_task:
 	# esp, eflags, cs, entry point (EIP)
 
 	# store entry point
-	mov 8(%esp), %ecx 
+	mov 8(%esp), %ebx 
 
 	xorl %eax, %eax
-	movw $USER_DS, %eax # USER_DS = 0x2B
+	movw $USER_DS, %ax # USER_DS = 0x2B
 	movw %ax, %ds # LOAD DS with USER DS!
 	pushl %eax
 
@@ -152,15 +152,15 @@ change_task:
 	# put stack pointer a little lower so it still translates properly, otherwise 
 	# we get "cannot access memory address at 0x8400000" which is because we don't have 
 	# a page directory entry for it!
-	push $0x83FFFFC
+	pushl $0x83FFFFC
 	pushfl
 	pop %eax 
 	orl $0x200, %eax # set interrupt flag to 1, enables interrupts
-	push %eax # push flags back onto stack
-	push $USER_CS # 0x23
+	pushl %eax # push flags back onto stack
+	pushl $USER_CS # 0x23
  
 	# entry point we stored earlier
-	push %ecx
+	pushl %ebx
 	iret
 
 
