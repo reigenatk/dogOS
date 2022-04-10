@@ -43,3 +43,15 @@ a ton but I used gdb to figure it out eventually.
 which was a mistake because I forgot that each character is 2 bytes, one 
 for terminal color and one for character, so by setting to 0 I was 
 actually setting the entire screen to black! Which was a mistake!
+
+10. In parsing the arguments I had a nasty buffer overflow that was 
+causing my EBP and EIP to be overwritten, and I was returning to 
+weird memory addresses like "616261626" which were obviously
+ASCII characters! I fixed this by making the buffer for the command 
+larger.
+
+11. Another really obscure bug in my putc '\n' case, where I forgot 
+to add an extra equals sign. So it was saying "screen_y = NUM_ROWS - 1"
+which was actually a valid C statement, instead of doing ==. So I would 
+magically teleport to the bottom of the terminal every time and I was 
+really confused on why until I caught this one.

@@ -5,8 +5,8 @@
 #include "terminal.h"
 #include "filesystem.h"
 
-int screen_x;
-int screen_y;
+int screen_x = 0;
+int screen_y = 0;
 static char* video_mem = (char *)VIDEO;
 
 /* void clear(void);
@@ -340,7 +340,7 @@ void scroll_up_mem() {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        if (screen_y = NUM_ROWS - 1) {
+        if (screen_y == NUM_ROWS - 1) {
             // then we were at last line, scroll up
             scroll_up();
         }

@@ -20,24 +20,27 @@
 // by locating the page directory and page tables for the current task. 
 // Typically, the upper 20 bits of CR3 become the page directory base register (PDBR), 
 // which stores the physical address of the first page directory
+
+// page fault error code: RSVD | U/S | R/W | P (bits 3-0 in that order)
 #define GENERIC_INTERRUPT_HANDLER(name_of_handler) \
   void name_of_handler()                           \
   {                                                \
     cli();                                         \
     clear();                                       \
-    uint32_t cr2, cr3, esp, eip;                             \
+    uint32_t cr2, cr3, esp, eip, error_code;       \
     asm volatile(                                  \
         "movl %%cr2, %0;"                       \
         "movl %%cr3, %1;"                       \
         "movl %%esp, %2;"                       \
         "movl 0x8(%%esp), %3;"                       \
-        : "=r"(cr2), "=r"(cr3), "=r"(esp), "=r"(eip) \
+        "popl %4;"                                  \
+        : "=r"(cr2), "=r"(cr3), "=r"(esp), "=r"(eip), "=r" (error_code) \
         );                                      \
     bluescreen();                                  \
     change_write_head(0, 0);                        \    
     printf("%s", #name_of_handler);                \
     change_write_head(0, 20);                      \     
-    printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x, eip: 0x%x", cr2, cr3, esp, eip); \
+    printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x, eip: 0x%x, errorcode: 0x%x", cr2, cr3, esp, eip, error_code); \
     sti();                                         \
     while(1); \
   }

@@ -2,6 +2,8 @@
 #include "i8259.h"
 #include "lib.h"
 #include "tests.h"
+#include "task.h"
+#include "terminal.h"
 
 // RTC is IRQ8, irq vector 0x28
 // info from https://wiki.osdev.org/RTC
@@ -19,23 +21,24 @@
 uint8_t is_running;
 uint32_t current_RTC_rate = 2;
 
-void init_RTC() {
+void init_RTC()
+{
 
-  outb(RTC_REG_B, RTC_IO_PORT);// register B, disable NMI
+  outb(RTC_REG_B, RTC_IO_PORT); // register B, disable NMI
   uint8_t prev = inb(CMOS_IO_PORT);
-  outb(RTC_REG_B, RTC_IO_PORT);// have to do this again cuz of the read, resets read to register D
+  outb(RTC_REG_B, RTC_IO_PORT); // have to do this again cuz of the read, resets read to register D
   outb(prev | 0x40, CMOS_IO_PORT);
 
   enable_irq(RTC_IRQ_NUM);
 }
 
-
 /*
-The RTC interrupt rate should be set to a default value of 
+The RTC interrupt rate should be set to a default value of
 2 Hz (2 interrupts per second) when the RTC device is opened.
 For simplicity, RTC interrupts should remain on at all times.
 */
-int32_t open_RTC(const uint8_t* filename) {
+int32_t open_RTC(const uint8_t *filename)
+{
   // just call init_RTC()
 
   // set RTC to highest possible rate
@@ -50,7 +53,8 @@ int32_t open_RTC(const uint8_t* filename) {
 For the real-time clock (RTC), this call should always return 0, but only after an interrupt has
 occurred (set a flag and wait until the interrupt handler clears it, then return 0).
 */
-int32_t read_RTC(int32_t fd, void* buf, int32_t nbytes) {
+int32_t read_RTC(int32_t fd, void *buf, int32_t nbytes)
+{
   the_flag = 1;
   while (the_flag == 1)
   {
@@ -61,18 +65,20 @@ int32_t read_RTC(int32_t fd, void* buf, int32_t nbytes) {
 
 /*
 In the case of the RTC, the system call should always accept only a 4-byte
-integer specifying the interrupt rate in Hz, 
-and should set the rate of periodic interrupts accordingly. 
+integer specifying the interrupt rate in Hz,
+and should set the rate of periodic interrupts accordingly.
 */
-int32_t write_RTC(int32_t fd, const void* buf, int32_t nbytes) {
+int32_t write_RTC(int32_t fd, const void *buf, int32_t nbytes)
+{
 
   // int ret = set_RTC_rate(*((uint32_t *)buf));
   // if (ret == -1)
   // {
   //   return -1;
   // }
-  uint32_t val =  *((uint32_t *)buf);
-  if (is_power_of_two(val) == -1 || val < 2 || val > 32768) {
+  uint32_t val = *((uint32_t *)buf);
+  if (is_power_of_two(val) == -1 || val < 2 || val > 32768)
+  {
     return -1;
   }
   current_RTC_rate = val;
@@ -80,17 +86,20 @@ int32_t write_RTC(int32_t fd, const void* buf, int32_t nbytes) {
   return nbytes;
 }
 
-int32_t close_RTC(int32_t fd) {
+int32_t close_RTC(int32_t fd)
+{
   // just reset RTC frequency
   current_RTC_rate = 2;
   return 0;
 }
 
-int is_power_of_two(uint32_t rate) {
+int is_power_of_two(uint32_t rate)
+{
   int ret = 0;
   while (rate != 1)
   {
-    if (rate%2 != 0) {
+    if (rate % 2 != 0)
+    {
       return -1;
     }
     rate >>= 1;
@@ -100,7 +109,8 @@ int is_power_of_two(uint32_t rate) {
 }
 
 // make this return a value so we know when we entered invalid frequency
-int set_RTC_rate(uint32_t rate_num) {
+int set_RTC_rate(uint32_t rate_num)
+{
   // valid RTC rates vary from 2^1 to 2^15 (32768)
   // the formula is frequency =  32768 >> (rate-1);
   // 15 -> 2Hz, 14 -> 4Hz, etc. 1-> 32768 Hz
@@ -121,8 +131,9 @@ int set_RTC_rate(uint32_t rate_num) {
   return 0;
 }
 
-void write_RTC_data() {
- // write to vid mem
+void write_RTC_data()
+{
+  // write to vid mem
   int8_t buf[10];
   itoa(rtc_test_counter, buf, 10);
   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
@@ -137,7 +148,7 @@ void write_RTC_data() {
   // *addr = buf[0];
   print_at_coordinates("virt:", RTC_X, RTC_Y + 1);
 
-  print_at_coordinates(buf2, RTC_X, RTC_Y+2);
+  print_at_coordinates(buf2, RTC_X, RTC_Y + 2);
 
   int8_t buf3[10];
   itoa(current_RTC_rate, buf3, 10);
@@ -145,20 +156,34 @@ void write_RTC_data() {
   // *addr = buf[0];
   print_at_coordinates("rate:", RTC_X, RTC_Y + 3);
 
-  print_at_coordinates(buf3, RTC_X, RTC_Y+4);
+  print_at_coordinates(buf3, RTC_X, RTC_Y + 4);
+
+  volatile uint32_t num_processes = total_programs_running();
+  int8_t buf4[5];
+  itoa(current_RTC_rate, buf4, 5);
+  print_at_coordinates("#Pr:", RTC_X - 6, RTC_Y);
+  print_at_coordinates(buf3, RTC_X - 2, RTC_Y);
+
+  // int8_t buf5[5];
+  // itoa(current_RTC_rate, buf5, 5);
+  // print_at_coordinates("Term:", RTC_X - 7, RTC_Y - 1);
+  // print_at_coordinates(cur_terminal_displayed, RTC_X - 1, RTC_Y - 1);
 }
 
 // function should call test_interrupts every time it receives an interrupt
-__attribute__((interrupt)) void RTC_interrupt_handler() {
+__attribute__((interrupt)) void RTC_interrupt_handler()
+{
   cli();
   send_eoi(RTC_IRQ_NUM);
-  if (is_running == 1) {
+  if (is_running == 1)
+  {
     test_interrupts();
   }
 
   rtc_test_counter++;
   // extra *2 because its rate-1
-  if (rtc_test_counter % (HIGH_RTC_RATE / (current_RTC_rate*2)) == 0 && rtc_test_counter != 0) {
+  if (rtc_test_counter % (HIGH_RTC_RATE / (current_RTC_rate * 2)) == 0 && rtc_test_counter != 0)
+  {
     rtc_virtual_counter++;
     // clear the flag for read_RTC()
     the_flag = 0;
@@ -172,6 +197,7 @@ __attribute__((interrupt)) void RTC_interrupt_handler() {
   sti();
 }
 
-void toggle_run() {
+void toggle_run()
+{
   is_running = !is_running;
 }

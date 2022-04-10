@@ -94,6 +94,9 @@ typedef struct task {
   // uint32_t* page_table_address;
   // // page tables and directories are of type uint32_t, so we need pointers to that
   // uint32_t* page_directory_address;
+
+  // signal stuff
+  
 } task;
 
 /*

@@ -14,9 +14,10 @@ keyboard.o: keyboard.c keyboard.h types.h i8259.h lib.h RTC.h \
   system_calls.h terminal.h task.h
 lib.o: lib.c lib.h types.h terminal.h task.h filesystem.h
 paging.o: paging.c paging.h types.h lib.h task.h
-RTC.o: RTC.c RTC.h types.h i8259.h lib.h tests.h
+RTC.o: RTC.c RTC.h types.h i8259.h lib.h tests.h task.h terminal.h
 scheduler.o: scheduler.c scheduler.h lib.h types.h terminal.h task.h \
   i8259.h paging.h x86_desc.h
+signal.o: signal.c signal.h types.h
 system_calls.o: system_calls.c system_calls.h types.h lib.h filesystem.h \
   RTC.h keyboard.h task.h paging.h x86_desc.h terminal.h
 task.o: task.c task.h types.h paging.h lib.h filesystem.h RTC.h \
