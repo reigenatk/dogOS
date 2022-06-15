@@ -37,9 +37,9 @@
         : "=r"(cr2), "=r"(cr3), "=r"(esp), "=r"(eip), "=r" (error_code) \
         );                                      \
     bluescreen();                                  \
-    change_write_head(0, 0);                        \    
+    change_write_head(0, 0);                        \
     printf("%s", #name_of_handler);                \
-    change_write_head(0, 20);                      \     
+    change_write_head(0, 20);                      \
     printf("cr2: 0x%x, cr3: 0x%#x, esp: 0x%x, eip: 0x%x, errorcode: 0x%x", cr2, cr3, esp, eip, error_code); \
     sti();                                         \
     while(1); \

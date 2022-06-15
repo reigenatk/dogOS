@@ -58,7 +58,7 @@ void change_write_head(int8_t new_x, int8_t new_y);
 // this is like puts except without change write head which is annoying sometimes
 void print_at_coordinates(int8_t *buf, int8_t new_x, int8_t new_y);
 void bluescreen();
-
+void do_backspace();
 
 // parses a received string into two buffers, command and argument
 void parse_command(int8_t *program_name, int8_t *arguments, int8_t *command);

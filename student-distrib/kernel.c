@@ -15,8 +15,9 @@
 #include "RTC.h"
 #include "filesystem.h"
 #include "scheduler.h"
+#include "terminal.h"
 
-#define RUN_TESTS
+// #define RUN_TESTS
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -180,7 +181,7 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Initializing Keyboard\n");
     init_keyboard();
     printf("Initializing RTC\n");
-    open_RTC("rtc");
+    open_RTC((uint8_t*) "rtc");
 
     // paging
     printf("Initializing Paging\n");

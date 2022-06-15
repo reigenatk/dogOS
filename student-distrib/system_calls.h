@@ -40,10 +40,8 @@ int32_t set_handler(int32_t signum, void* handler_address);
 
 int32_t sigreturn(void);
 
-uint32_t save_ebp();
+// these are the actual system calls from Linux
+int32_t sigaction(int signum, int sigaction_ptr, int oldsigaction_ptr);
 
-uint32_t save_esp();
-
-// these are the actual system calls
 
 #endif

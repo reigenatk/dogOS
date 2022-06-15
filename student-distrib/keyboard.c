@@ -80,6 +80,12 @@
 #define KEY_F10 68
 #define KEY_NUMLOCK 69
 #define KEY_SCROLLLOCK 70
+
+#define ARROW_KEYS 0xE0
+#define ARROW_LEFT 0x4B
+#define ARROW_RIGHT 0x4D
+#define ARROW_DOWN 0x50
+#define ARROW_UP 0x48
 // #define KEY_KP7			71
 // #define KEY_KP8			72
 // #define KEY_KP9			73
@@ -98,6 +104,7 @@ uint8_t is_caps_lock_toggled = 0;
 uint8_t is_shift_key_pressed = 0;
 uint8_t is_ctrl_key_pressed = 0;
 uint8_t is_alt_pressed = 0;
+uint8_t is_escape_sequence = 0;
 
 #define NUM_KEYS 70
 #define KEYBOARD_IRQ 1
@@ -179,13 +186,8 @@ void init_keyboard()
   init_key_vals();
 }
 
-void dereference_null()
-{
-  int a = 3 / 0;
-}
-
 // desginate this as an interrupt handler so it IRET's instead of leave + ret
-__attribute__((interrupt)) void keyboard_INT()
+void keyboard_INT()
 {
   // IO Port 0x60 is used by the Keyboard. This is just standard, you can look it up
   // To read data from the keyboard we just read from port 0x60 using IN, and then send EOI
@@ -210,6 +212,9 @@ __attribute__((interrupt)) void keyboard_INT()
 
   uint8_t keycode = 0; // keycodes range from 0x0-0x60 ish, let's use 0 which is error code normally to indicate we haven't received anything
   keycode = inb(KEYBOARD_PORT);
+
+  // see scancodes
+  // printf("%x\n", keycode);
 
   if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT)
   {
@@ -249,6 +254,27 @@ __attribute__((interrupt)) void keyboard_INT()
 
       // move cursor too
       do_backspace();
+    }
+  }
+  else if (keycode == ARROW_UP || keycode == ARROW_DOWN ||
+           keycode == ARROW_LEFT || keycode == ARROW_RIGHT)
+  {
+    switch (keycode)
+    {
+    case ARROW_UP:
+      // printf("arrow up\n");
+      // get_previous_command();
+      break;
+    case ARROW_DOWN:
+      // printf("arrow down\n");
+      // get_next_command();
+      break;
+    case ARROW_LEFT:
+      // printf("arrow left\n");
+      break;
+    case ARROW_RIGHT:
+      // printf("arrow right\n");
+      break;
     }
   }
   else

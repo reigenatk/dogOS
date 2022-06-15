@@ -12,7 +12,7 @@ uint32_t total_programs_running()
 {
   int i = 0;
   uint32_t res = 0;
-  for (i; i <= MAX_TASKS; i++)
+  for (; i <= MAX_TASKS; i++)
   {
     if (running_process_ids[i] != 0)
     {

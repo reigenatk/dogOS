@@ -26,13 +26,13 @@
 .text                 ;\
 name:                 ;\
   pushl	%ebx          ;\
-	movl	$number,%eax  ;\ 
-	movl	8(%esp),%ebx  ;\ 
-	movl	12(%esp),%ecx ;\
-	movl	16(%esp),%edx ;\
-	int	$0x80         ;\  
-	popl	%ebx          ;\
-	ret
+  movl	$number,%eax  ;\
+  movl	8(%esp),%ebx  ;\
+  movl	12(%esp),%ecx ;\
+  movl	16(%esp),%edx ;\
+  int	$0x80         ;\
+  popl	%ebx          ;\
+  ret
 
 
 # numbers defined in ece391sysnum.h
@@ -46,6 +46,11 @@ DO_CALL(getargs,SYS_GETARGS)
 DO_CALL(vidmap,SYS_VIDMAP)
 DO_CALL(set_handler,SYS_SET_HANDLER)
 DO_CALL(sigreturn,SYS_SIGRETURN)
+
+DO_CALL(sigaction, SYSCALL_SIGACTION)
+DO_CALL(kill, SYSCALL_KILL)
+DO_CALL(sigsuspend, SYSCALL_SIGSUSPEND)
+DO_CALL(sigprocmask, SYSCALL_SIGPROCMASK)
 
 # wrap syscall handler too
 # "In particular, the call number is placed in EAX, the first argument in EBX, then

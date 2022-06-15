@@ -4,6 +4,7 @@
 #include "paging.h"
 #include "task.h"
 #include "x86_desc.h"
+#include "system_calls.h"
 
 // https://wiki.osdev.org/Programmable_Interval_Timer#Operating_Modes
 // 1.193182 MHz, we want 100 Hz, since 10 ms = (1 / 100) sec and 
@@ -61,7 +62,7 @@ void pit_interrupt_handler() {
     // send eoi so that we can receive another scheduling interrupt
     // to switch to another process
     send_eoi(TIMER_IRQ_NUM);
-    execute("shell");
+    execute((uint8_t*) "shell");
   }
   
   // so above we start a shell if we dont already have one. Then we 

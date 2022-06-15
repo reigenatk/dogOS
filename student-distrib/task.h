@@ -2,6 +2,7 @@
 #define TASK_H
 
 #include "types.h"
+#include "signal.h"
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
@@ -69,10 +70,19 @@ typedef struct file_descriptor {
 // max buffer size), etc. This data goes at the start of the 8KB kernel stack for this task
 
 typedef struct task {
+  uint8_t status; ///< Current status of this task
+  uint8_t tty; ///< Attached tty number
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
   uint32_t pid; // the process ID tells us all sorts of into about where the process is in memory
-  
+  uint32_t parent_pid; ///< parent process id
+
+  // signal stuff
+  struct sigaction sigacts[SIG_MAX]; ///< Signal handlers
+	sigset_t signals;	///< Pending signals
+	sigset_t signal_mask; ///< Deferred signals
+	uint32_t exit_status; ///< Status to report on `wait`
+
   // current ebp + esp
   uint32_t esp;
   uint32_t ebp;
@@ -95,7 +105,10 @@ typedef struct task {
   // // page tables and directories are of type uint32_t, so we need pointers to that
   // uint32_t* page_directory_address;
 
-  // signal stuff
+  uint16_t uid; ///< User ID of the process
+	uint16_t gid; ///< Group ID of the process
+	
+	char *wd; ///< Working directory
   
 } task;
 
@@ -155,7 +168,4 @@ physical 12 MB.
 uint32_t calculate_task_physical_address(uint32_t pid);
 
 uint32_t calculate_task_pcb_pointer(uint32_t pid);
-
-
-
 #endif

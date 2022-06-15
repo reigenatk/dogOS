@@ -17,7 +17,7 @@ uint32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry)
   int i;
   for (i = 0; i < num_directory_entries; i++)
   {
-    if (strlen(fname) == MAX_FILE_NAME_LENGTH)
+    if (strlen((int8_t*) fname) == MAX_FILE_NAME_LENGTH)
     {
       // for very long file, we just want to compare first 32 chars
       // without this it will return -1
@@ -30,7 +30,7 @@ uint32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry)
         return 0;
       }
     }
-    if (strlen(directory_entries[i].file_name) != strlen(fname))
+    if (strlen((int8_t*) directory_entries[i].file_name) != strlen((int8_t*) fname))
     {
       // the two files must have the same length
       continue;
@@ -65,7 +65,7 @@ uint32_t read_dentry_by_index(uint32_t index, dentry_t *dentry)
 
 uint32_t get_data_block_num(int block_no, int inode)
 {
-  uint32_t length_of_data = inodes[inode].length_in_bytes;
+  // uint32_t length_of_data = inodes[inode].length_in_bytes;
 
   // this is the max block idx we should ever use. All block idx should be less than this num
   uint32_t limit = num_data_blocks;
@@ -238,7 +238,8 @@ uint32_t read_data_by_filename(uint8_t *fname, uint8_t *buf, uint32_t length)
   }
   uint32_t inode = t.inode_number;
   // pass it along
-  read_data(inode, 0, buf, length);
+  uint32_t ret = read_data(inode, 0, buf, length);
+  return ret;
 }
 
 int32_t open_file(const uint8_t *filename)
@@ -313,7 +314,7 @@ int32_t read_dir(int32_t fd, void *buf, int32_t nbytes)
   {
     ((int8_t *)buf)[i] = '\0';
   }
-  uint32_t length_of_file_name = strlen(directory_entries[file_names_idx].file_name);
+  uint32_t length_of_file_name = strlen((int8_t*) directory_entries[file_names_idx].file_name);
 
   // if you copy more than 32 it will error out, not sure why since its not
   // in the ls source code but whatever, just limit it here

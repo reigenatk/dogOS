@@ -14,7 +14,7 @@
 #define RTC_REG_B 0x8B
 #define RTC_REG_C 0x8C
 
-#define HIGH_RTC_RATE 4096
+#define HIGH_RTC_RATE 1024
 #define RTC_X 70
 #define RTC_Y 1
 
@@ -63,6 +63,21 @@ int32_t read_RTC(int32_t fd, void *buf, int32_t nbytes)
   return 0;
 }
 
+int is_power_of_two(uint32_t rate)
+{
+  int ret = 0;
+  while (rate != 1)
+  {
+    if (rate % 2 != 0)
+    {
+      return -1;
+    }
+    rate >>= 1;
+    ret++;
+  }
+  return ret;
+}
+
 /*
 In the case of the RTC, the system call should always accept only a 4-byte
 integer specifying the interrupt rate in Hz,
@@ -91,21 +106,6 @@ int32_t close_RTC(int32_t fd)
   // just reset RTC frequency
   current_RTC_rate = 2;
   return 0;
-}
-
-int is_power_of_two(uint32_t rate)
-{
-  int ret = 0;
-  while (rate != 1)
-  {
-    if (rate % 2 != 0)
-    {
-      return -1;
-    }
-    rate >>= 1;
-    ret++;
-  }
-  return ret;
 }
 
 // make this return a value so we know when we entered invalid frequency
@@ -138,31 +138,31 @@ void write_RTC_data()
   itoa(rtc_test_counter, buf, 10);
   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
   // *addr = buf[0];
-  print_at_coordinates("real:", RTC_X, RTC_Y - 1);
+  // print_at_coordinates("real:", RTC_X, RTC_Y - 1);
 
-  print_at_coordinates(buf, RTC_X, RTC_Y);
+  // print_at_coordinates(buf, RTC_X, RTC_Y);
 
   int8_t buf2[10];
   itoa(rtc_virtual_counter, buf2, 10);
   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
   // *addr = buf[0];
-  print_at_coordinates("virt:", RTC_X, RTC_Y + 1);
+  // print_at_coordinates("virt:", RTC_X, RTC_Y + 1);
 
-  print_at_coordinates(buf2, RTC_X, RTC_Y + 2);
+  // print_at_coordinates(buf2, RTC_X, RTC_Y + 2);
 
   int8_t buf3[10];
   itoa(current_RTC_rate, buf3, 10);
   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
   // *addr = buf[0];
-  print_at_coordinates("rate:", RTC_X, RTC_Y + 3);
+  // print_at_coordinates("rate:", RTC_X, RTC_Y + 3);
 
-  print_at_coordinates(buf3, RTC_X, RTC_Y + 4);
+  // print_at_coordinates(buf3, RTC_X, RTC_Y + 4);
 
-  volatile uint32_t num_processes = total_programs_running();
+  // volatile uint32_t num_processes = total_programs_running();
   int8_t buf4[5];
   itoa(current_RTC_rate, buf4, 5);
-  print_at_coordinates("#Pr:", RTC_X - 6, RTC_Y);
-  print_at_coordinates(buf3, RTC_X - 2, RTC_Y);
+  // print_at_coordinates("#Pr:", RTC_X - 7, RTC_Y);
+  // print_at_coordinates(buf4, RTC_X - 3, RTC_Y);
 
   // int8_t buf5[5];
   // itoa(current_RTC_rate, buf5, 5);
@@ -171,13 +171,13 @@ void write_RTC_data()
 }
 
 // function should call test_interrupts every time it receives an interrupt
-__attribute__((interrupt)) void RTC_interrupt_handler()
+void RTC_interrupt_handler()
 {
   cli();
   send_eoi(RTC_IRQ_NUM);
   if (is_running == 1)
   {
-    test_interrupts();
+    // test_interrupts();
   }
 
   rtc_test_counter++;

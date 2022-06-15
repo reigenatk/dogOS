@@ -382,7 +382,7 @@ void putc_mem(uint8_t c) {
     int mem_x = terminals[cur_terminal_running].screen_x;
     if (c == '\n' || c == '\r')
     {
-        if (mem_y = NUM_ROWS - 1) {
+        if (mem_y == NUM_ROWS - 1) {
             // then we were at last line, scroll up
             scroll_up_mem();
         }
