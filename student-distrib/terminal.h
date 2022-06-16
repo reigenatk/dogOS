@@ -13,6 +13,12 @@
 
 struct task;
 
+typedef struct
+{
+  uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
+  uint8_t in_use;
+} prev_command_t;
+
 /*
 In order to support the notion of a terminal, you must have a
 separate input buffer associated with each terminal. In
@@ -42,7 +48,11 @@ typedef struct terminal_t
   uint8_t line_buffer[LINE_BUFFER_MAX_SIZE];
   uint32_t line_buffer_idx;
 
-  uint8_t previous_commands[MAX_PREVIOUS_COMMANDS][LINE_BUFFER_MAX_SIZE];
+  prev_command_t previous_commands[MAX_PREVIOUS_COMMANDS];
+
+  // set to -1 when creating empty command, and otherwise 0 to MAX_COMMANDS-1
+  // when viewing previous commands
+  int32_t current_command_viewed;
 } terminal_t;
 
 // which terminal is displayed? Index into terminals array. This
@@ -57,6 +67,12 @@ extern terminal_t terminals[NUM_TERMINALS];
 
 // called in kernel.c, starts the first terminal with an instance of shell
 void init_terminal();
+
+// when you press up key
+void get_previous_command();
+
+// when you press down key
+void get_next_command();
 
 // called when ALT + Function key combo pressed
 void switch_terminal(uint32_t new_terminal_idx);

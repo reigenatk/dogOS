@@ -31,7 +31,7 @@ int32_t get_new_process_id()
 {
   uint32_t i;
   for (i = task_allocator; i < MAX_TASKS; i++) {
-    if (tasks[task_allocator].status == TASK_ST_NA) {
+    if (tasks[i].status == TASK_ST_NA) {
       // then we can use this
       task_allocator = i;
       return i;

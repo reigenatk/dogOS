@@ -14,7 +14,7 @@
 #define RTC_REG_B 0x8B
 #define RTC_REG_C 0x8C
 
-#define HIGH_RTC_RATE 4096
+#define HIGH_RTC_RATE 1024
 #define RTC_X 70
 #define RTC_Y 1
 

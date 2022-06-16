@@ -7,6 +7,7 @@
 #include "paging.h"
 #include "x86_desc.h"
 #include "terminal.h"
+#include "errno.h"
 
 // these are the actual system calls
 // since definition doubles as a declaration and a definition
@@ -58,7 +59,7 @@ int32_t sys_halt(uint8_t status)
   if (terminals[cur_terminal_running].num_processes_running == 0)
   {
     printf("restarting terminal\n");
-    execute("shell");
+    execute((uint8_t*) "shell");
   }
 
   printf("shutdown process %d, returning to process %d\n", current_task_pid, parent_task_pid);
@@ -117,7 +118,7 @@ int32_t sys_execute(const uint8_t *command)
   // special commands
 
   // type halt to quit a process in a shell
-  uint32_t total = total_programs_running();
+  // uint32_t total = total_programs_running();
   if (strncmp("halt", program_name, 4) == 0 && total_programs_running != 0)
   {
     halt(0);
@@ -538,48 +539,20 @@ another page mapping for the program, in this case a 4 kB page. It is not ok
 to simply change the permissions of the
 video page located < 4MB and pass that address.
 */
+#define VIDMAP_ADDR 0x8500000
 int32_t sys_vidmap(uint8_t **screen_start)
 {
-
-  // check to see if the address passed in is within the address range of this task
-  // address range of this task can be calculated if we find the process id, and then
-  // we know its 4MB page offsets from 8MB which was the kernel page
-
-  task *PCB_data = get_task_in_running_terminal();
-  uint32_t pid = PCB_data->pid;
-  uint32_t start_of_memory = calculate_task_physical_address(pid);
-  uint32_t end_of_memory = start_of_memory + FOURMB;
-
-  // check that it is from user space
-  if (((uint32_t)screen_start) < start_of_memory || ((uint32_t)screen_start) > end_of_memory)
+  if ((uint32_t)screen_start < PROGRAM_IMAGE_VIRTUAL_ADDRESS ||
+      (uint32_t)screen_start > PROGRAM_IMAGE_VIRTUAL_ADDRESS + FOURMB)
   {
     return -1;
   }
+  page_directory[34] = (uint32_t)(uint32_t)page_table | READ_WRITE_BIT | PRESENT_BIT | USER_BIT;
 
-  // now map a new 4KB page to go from our virtual address to our physical
-  // so put in english, we get to access the video memory via 0x8000000
-  // because we make a page directory entry + page table entry that maps
-  // this virtual address to this physical address. You can run through the address translation
-  // to verify this is the case
+  page_table[0] = ((uint32_t)VIDEO) | USER_BIT | PRESENT_BIT | READ_WRITE_BIT;
+  flush_tlb();
 
-  // we get to define where the text-mode video memory maps into userspace
-  // we arbitrarily choose 0x09000000 (144MB), since we know program memory is at 0x08000000
-  // so this is above any address that a program would use (0x08000000 - 0x08400000)
-  //  and won't interfere with any previous mappings we have already.
+  *screen_start = (uint8_t *)(VIDMAP_ADDR);
+  return VIDMAP_ADDR;
+}
 
-  // page directory entry 0000 1001 00 -> 4 + 32 = 36
-  virtual_to_physical_remap_usertable((uint32_t)0x09000000, (uint32_t)VIDEO, 1);
-  // assign the pointer to the address which we know will map to video memory
-  *screen_start = (uint8_t *)0x09000000;
-  return 0;
-}
-int32_t sys_set_handler(int32_t signum, void *handler_address)
-{
-  printf("hi");
-  return 0x20;
-}
-int32_t sys_sigreturn(void)
-{
-  printf("hi");
-  return 0x20;
-}

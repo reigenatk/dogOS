@@ -116,7 +116,7 @@ void disable_irq(uint32_t irq_num) {
 void send_eoi(uint32_t irq_num) {
   uint32_t val = EOI | irq_num;
   uint32_t val_slave = EOI | (irq_num - 8);
-  uint8_t keyboard_IRQ_PIC = 0x02;
+
   if (irq_num < 8)
   {
     // master

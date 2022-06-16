@@ -7,7 +7,7 @@
 .globl syscall_handler_wrapper
 
 # define the actual syscall functions as extern. ,They are defined in system_calls.c
-.extern sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, sys_sethandler, sys_sigreturn
+.extern sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, ece391_sys_set_handler, ece391_sys_sigreturn
 
 # this is a template for generic macros that will move the arguments of the syscall 
 # into the defined registers that the MP specifies:
@@ -26,13 +26,13 @@
 .text                 ;\
 name:                 ;\
   pushl	%ebx          ;\
-	movl	$number,%eax  ;\ 
-	movl	8(%esp),%ebx  ;\ 
-	movl	12(%esp),%ecx ;\
-	movl	16(%esp),%edx ;\
-	int	$0x80         ;\  
-	popl	%ebx          ;\
-	ret
+  movl	$number,%eax  ;\
+  movl	8(%esp),%ebx  ;\
+  movl	12(%esp),%ecx ;\
+  movl	16(%esp),%edx ;\
+  int	$0x80         ;\
+  popl	%ebx          ;\
+  ret
 
 
 # numbers defined in ece391sysnum.h
@@ -46,6 +46,11 @@ DO_CALL(getargs,SYS_GETARGS)
 DO_CALL(vidmap,SYS_VIDMAP)
 DO_CALL(set_handler,SYS_SET_HANDLER)
 DO_CALL(sigreturn,SYS_SIGRETURN)
+
+DO_CALL(sigaction, SYSCALL_SIGACTION)
+DO_CALL(kill, SYSCALL_KILL)
+DO_CALL(sigsuspend, SYSCALL_SIGSUSPEND)
+DO_CALL(sigprocmask, SYSCALL_SIGPROCMASK)
 
 # wrap syscall handler too
 # "In particular, the call number is placed in EAX, the first argument in EBX, then
@@ -106,7 +111,7 @@ return:
 	iret # return from system call handler
 
 jump_table:
-	.long sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, sys_set_handler, sys_sigreturn
+	.long sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, ece391_sys_set_handler, ece391_sys_sigreturn
 
 # Refer to: https://wiki.osdev.org/Getting_to_Ring_3
 # or this:
