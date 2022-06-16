@@ -19,6 +19,9 @@
     "terminal.h": "c",
     "scheduler.h": "c",
     "task.h": "c",
-    "x86_desc.h": "c"
+    "x86_desc.h": "c",
+    "signal.h": "c",
+    "signal_user.h": "c",
+    "debug.h": "c"
   }
 }

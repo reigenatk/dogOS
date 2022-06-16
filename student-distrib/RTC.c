@@ -63,6 +63,21 @@ int32_t read_RTC(int32_t fd, void *buf, int32_t nbytes)
   return 0;
 }
 
+int is_power_of_two(uint32_t rate)
+{
+  int ret = 0;
+  while (rate != 1)
+  {
+    if (rate % 2 != 0)
+    {
+      return -1;
+    }
+    rate >>= 1;
+    ret++;
+  }
+  return ret;
+}
+
 /*
 In the case of the RTC, the system call should always accept only a 4-byte
 integer specifying the interrupt rate in Hz,
@@ -93,21 +108,6 @@ int32_t close_RTC(int32_t fd)
   return 0;
 }
 
-int is_power_of_two(uint32_t rate)
-{
-  int ret = 0;
-  while (rate != 1)
-  {
-    if (rate % 2 != 0)
-    {
-      return -1;
-    }
-    rate >>= 1;
-    ret++;
-  }
-  return ret;
-}
-
 // make this return a value so we know when we entered invalid frequency
 int set_RTC_rate(uint32_t rate_num)
 {
@@ -131,54 +131,50 @@ int set_RTC_rate(uint32_t rate_num)
   return 0;
 }
 
-void write_RTC_data()
-{
-  // write to vid mem
-  int8_t buf[10];
-  itoa(rtc_test_counter, buf, 10);
-  // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
-  // *addr = buf[0];
-  print_at_coordinates("real:", RTC_X, RTC_Y - 1);
+// void write_RTC_data()
+// {
+//   // write to vid mem
+//   int8_t buf[10];
+//   itoa(rtc_test_counter, buf, 10);
+//   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
+//   // *addr = buf[0];
+//   print_at_coordinates("real:", RTC_X, RTC_Y - 1);
 
-  print_at_coordinates(buf, RTC_X, RTC_Y);
+//   print_at_coordinates(buf, RTC_X, RTC_Y);
 
-  int8_t buf2[10];
-  itoa(rtc_virtual_counter, buf2, 10);
-  // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
-  // *addr = buf[0];
-  print_at_coordinates("virt:", RTC_X, RTC_Y + 1);
+//   int8_t buf2[10];
+//   itoa(rtc_virtual_counter, buf2, 10);
+//   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
+//   // *addr = buf[0];
+//   print_at_coordinates("virt:", RTC_X, RTC_Y + 1);
 
-  print_at_coordinates(buf2, RTC_X, RTC_Y + 2);
+//   print_at_coordinates(buf2, RTC_X, RTC_Y + 2);
 
-  int8_t buf3[10];
-  itoa(current_RTC_rate, buf3, 10);
-  // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
-  // *addr = buf[0];
-  print_at_coordinates("rate:", RTC_X, RTC_Y + 3);
+//   int8_t buf3[10];
+//   itoa(current_RTC_rate, buf3, 10);
+//   // char *addr = ((char *)VIDEO + ((RTC_X + NUM_COLS * RTC_Y) << 1));
+//   // *addr = buf[0];
+//   print_at_coordinates("rate:", RTC_X, RTC_Y + 3);
 
-  print_at_coordinates(buf3, RTC_X, RTC_Y + 4);
+//   print_at_coordinates(buf3, RTC_X, RTC_Y + 4);
 
-  volatile uint32_t num_processes = total_programs_running();
-  int8_t buf4[5];
-  itoa(current_RTC_rate, buf4, 5);
-  print_at_coordinates("#Pr:", RTC_X - 6, RTC_Y);
-  print_at_coordinates(buf3, RTC_X - 2, RTC_Y);
+//   volatile uint32_t num_processes = total_programs_running();
+//   int8_t buf4[5];
+//   itoa(current_RTC_rate, buf4, 5);
+//   print_at_coordinates("#Pr:", RTC_X - 6, RTC_Y);
+//   print_at_coordinates(buf3, RTC_X - 2, RTC_Y);
 
-  // int8_t buf5[5];
-  // itoa(current_RTC_rate, buf5, 5);
-  // print_at_coordinates("Term:", RTC_X - 7, RTC_Y - 1);
-  // print_at_coordinates(cur_terminal_displayed, RTC_X - 1, RTC_Y - 1);
-}
+//   // int8_t buf5[5];
+//   // itoa(current_RTC_rate, buf5, 5);
+//   // print_at_coordinates("Term:", RTC_X - 7, RTC_Y - 1);
+//   // print_at_coordinates(cur_terminal_displayed, RTC_X - 1, RTC_Y - 1);
+// }
 
 // function should call test_interrupts every time it receives an interrupt
-__attribute__((interrupt)) void RTC_interrupt_handler()
+void RTC_interrupt_handler()
 {
   cli();
   send_eoi(RTC_IRQ_NUM);
-  if (is_running == 1)
-  {
-    test_interrupts();
-  }
 
   rtc_test_counter++;
   // extra *2 because its rate-1
@@ -189,7 +185,7 @@ __attribute__((interrupt)) void RTC_interrupt_handler()
     the_flag = 0;
   }
 
-  write_RTC_data();
+  // write_RTC_data();
 
   outb(0x0C, RTC_IO_PORT);
   inb(CMOS_IO_PORT);

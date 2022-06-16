@@ -4,38 +4,41 @@
 #include "RTC.h"
 #include "keyboard.h"
 #include "terminal.h"
+#include "errno.h"
 
-// start this with no running tasks at all. We start counting at PID = 1.
-uint32_t running_process_ids[MAX_TASKS + 1] = {0, 0, 0, 0, 0, 0, 0};
+// All of our running tasks! Initialized to zero since its global
+task tasks[MAX_TASKS];
+uint32_t task_allocator = 0;
+
+void init_tasks() {
+  memset(tasks, 0, sizeof(tasks));
+}
 
 uint32_t total_programs_running()
 {
-  int i = 0;
-  uint32_t res = 0;
-  for (i; i <= MAX_TASKS; i++)
-  {
-    if (running_process_ids[i] != 0)
-    {
-      res++;
+  uint32_t ans = 0;
+  int i;
+  for (i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].status == TASK_ST_RUNNING) {
+      ans++;
     }
   }
-  return res;
+  return ans;
 }
 
+// as in linux, let's make it so that a PID is never re-assigned.
 int32_t get_new_process_id()
 {
-  int i = 1;
-  for (; i <= MAX_TASKS; i++)
-  {
-    if (running_process_ids[i] == 0)
-    {
-      // open slot
-      running_process_ids[i] = 1;
+  uint32_t i;
+  for (i = task_allocator; i < MAX_TASKS; i++) {
+    if (tasks[task_allocator].status == TASK_ST_NA) {
+      // then we can use this
+      task_allocator = i;
       return i;
     }
   }
-  // full
-  return -1;
+  // IF WE GET HERE then we are out of tasks
+  return -EAGAIN;
 }
 
 task *init_task(uint32_t pid)
@@ -95,6 +98,9 @@ task *init_task(uint32_t pid)
 
   task_pcb->pid = pid;
   task_pcb->parent_task = terminals[cur_terminal_running].current_task;
+
+
+
 
   // create page table and directory for this process. we will put it at the very top
   // of memory for the process
@@ -165,4 +171,24 @@ int32_t find_unused_fd()
   }
   // no open fds
   return -1;
+}
+
+/**
+ * @brief  function that simulates what asm would do? This is weird lmao.
+ * 
+ * @param esp The value of the esp register for this task context
+ * @param new_val The value we want to be at the memory location
+ * @return int 
+ */
+int push_onto_task_stack(uint32_t* esp, uint32_t new_val) {
+  *esp -= 4; // move esp for this user stack down 4
+  *esp = new_val;
+  return 0;
+}
+
+int push_buf_onto_task_stack(uint32_t* esp, uint8_t* buf, uint32_t len) {
+  *esp -= len; // move esp for this user stack down 4
+  *esp &= ~3;  // align to DWORD (last two bits zeroed)
+  memcpy(esp, buf, len);
+  return 0;
 }

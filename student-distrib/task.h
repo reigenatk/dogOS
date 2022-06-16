@@ -2,10 +2,12 @@
 #define TASK_H
 
 #include "types.h"
+#include "libc/signal.h"
+#include "interrupt_handlers.h"
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
-#define MAX_TASKS 6
+#define MAX_TASKS 64
 
 /*
 The final bit of per-task state that needs to be allocated is a kernel stack 
@@ -64,15 +66,35 @@ typedef struct file_descriptor {
   uint32_t flags;
 } file_descriptor;
 
+// task states (only one should be set at a time) https://elixir.bootlin.com/linux/latest/source/include/linux/sched.h#L84
+#define TASK_ST_NA			0	///< Process PID is not in use
+#define TASK_ST_RUNNING		1	///< Process is actively running on processor
+#define TASK_ST_SLEEP		2	///< Process is sleeping (also called Interruptable)
+#define TASK_ST_ZOMBIE		3	///< Process is awaiting parent `wait()`
+#define TASK_ST_DEAD		4	///< Process is dead
+
+#define SIG_MAX 32
+
 // this is our pcb (Process Control Block) struct with data like all file descriptors,
 // the name of the task, the arguments that were passed in (which is limited by 
 // max buffer size), etc. This data goes at the start of the 8KB kernel stack for this task
-
-typedef struct task {
+typedef struct task_t {
+  uint8_t status; ///< Current status of this task
+  uint8_t tty; ///< Attached tty number
   file_descriptor fds[MAX_OPEN_FILES];
   uint8_t name_of_task[32];
   uint32_t pid; // the process ID tells us all sorts of into about where the process is in memory
+  uint32_t parent_pid; ///< parent process id
+
   
+  struct s_regs regs;
+
+  // signal stuff
+  struct sigaction sigacts[32]; ///< Signal handlers
+	sigset_t signals;	///< Pending signals
+	sigset_t signal_mask; ///< Deferred signals
+	uint32_t exit_status; ///< Status to report on `wait`
+
   // current ebp + esp
   uint32_t esp;
   uint32_t ebp;
@@ -95,7 +117,10 @@ typedef struct task {
   // // page tables and directories are of type uint32_t, so we need pointers to that
   // uint32_t* page_directory_address;
 
-  // signal stuff
+  uint16_t uid; ///< User ID of the process
+	uint16_t gid; ///< Group ID of the process
+	
+	char *wd; ///< Working directory
   
 } task;
 
@@ -108,20 +133,9 @@ corresponding to the figure shown on the right.
 In other words, each task has its own page directory!
 */
 
+extern task tasks[MAX_TASKS];
 
-/*
-Further, you must support up to six processes
-in total. For example, each terminal running shell running 
-another program. 
-For the other extreme, have 2 terminals
-running 1 shell and have 1 terminal running 4 programs 
-(a program on top of shell, on top of shell, etc.).
-
-Mark bit as 1 if process ID is taken, 0 if not taken
-We will use IDs 1 - 6, hence the +1
-*/
-extern uint32_t running_process_ids[MAX_TASKS+1];
-
+void init_tasks();
 task *get_task();
 task *get_task_in_running_terminal();
 
@@ -143,6 +157,22 @@ require no more than 4 MB each, so you need only allocate a single page for each
 TLDR: each task gets 4 MB page of memory.
 */
 
+/**
+ * @brief A way to add something to the user stack of a process
+ * Used by custom signal handler frame setup, for example
+ */
+int push_onto_task_stack(uint32_t *esp, uint32_t new_val);
+
+/**
+ * @brief Pushes a buffer onto user stack for a task
+ * 
+ * @param esp 
+ * @param buf 
+ * @param len 
+ * @return int 
+ */
+int push_buf_onto_task_stack(uint32_t *esp, uint8_t *buf, uint32_t len);
+
 /*
 To make physical memory management easy, you may
 assume there is at least 16 MB of physical memory
@@ -155,7 +185,4 @@ physical 12 MB.
 uint32_t calculate_task_physical_address(uint32_t pid);
 
 uint32_t calculate_task_pcb_pointer(uint32_t pid);
-
-
-
 #endif

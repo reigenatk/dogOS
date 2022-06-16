@@ -47,8 +47,8 @@ int32_t sys_halt(uint8_t status)
   // no need to do anything else, all the other task fields get over-written
   // on a second call to execute()
 
-  // "destroy the task by freeing up the space in the process ID array "
-  running_process_ids[current_task_pid] = 0;
+  // destroy the task
+  tasks[current_task_pid].status = TASK_ST_DEAD;
 
   // also update the terminal with that info
   terminals[cur_terminal_running].num_processes_running--;

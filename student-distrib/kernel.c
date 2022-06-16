@@ -7,7 +7,7 @@
 #include "lib.h"
 #include "i8259.h"
 #include "debug.h"
-#include "tests.h"
+#include "task.h"
 
 #include "paging.h"
 #include "interrupt_handlers.h"
@@ -181,6 +181,8 @@ void entry(unsigned long magic, unsigned long addr) {
     init_keyboard();
     printf("Initializing RTC\n");
     open_RTC("rtc");
+
+    init_tasks();
 
     // paging
     printf("Initializing Paging\n");

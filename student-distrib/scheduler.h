@@ -1,7 +1,6 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include "lib.h"
 
 
 #define HUNDRED_HERTZ_DIVIDER 11932
