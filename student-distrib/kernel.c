@@ -188,6 +188,7 @@ void entry(unsigned long magic, unsigned long addr) {
     // paging
     printf("Initializing Paging\n");
     setup_paging();
+    signals_init();
 
     init_terminal();
 

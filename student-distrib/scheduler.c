@@ -91,6 +91,8 @@ void pit_interrupt_handler() {
     tss.esp0 = KERNEL_MEM_BOTTOM - ((next_task_pid-1) * TASK_STACK_SIZE) - 4;
     tss.ss0 = KERNEL_DS;
 
+    // we gotta remap this everytime so that the addr 0x8000000 virt translates
+    // to the proper physical address
     map_process_mem(next_task_pid);
     
     uint32_t next_esp = terminals[next].current_task->esp;

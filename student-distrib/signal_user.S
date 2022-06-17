@@ -1,6 +1,6 @@
 # a file for defining global symbols related to signals, accessible from userspace applications
 
-.globl offset_of_signal_systemcall_user, offset_of_signal_user_ret
+.globl offset_of_signal_systemcall_user, offset_of_signal_user_ret, signal_user_base
 
 signal_user_base:
   .long 0x69696969
@@ -29,6 +29,9 @@ signal_user_ret:
 	popal # pop hw context back into place
 	ret
 
+# make sure this is the first one, its the size of entire signal_user page.
+size_of_signal_asm:
+   .long size_of_signal_asm - signal_user_base
 
 offset_of_signal_systemcall_user:
   .long systemcall_user - signal_user_base

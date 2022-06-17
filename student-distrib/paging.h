@@ -7,10 +7,18 @@
 #define FIRST_TEN_BITS_MASK 0xFFC00000
 #define NEXT_TEN_BITS 0x003FF000
 #define FIRST_TWENTY_BITS 0xFFFFF000
+
+// PDE/PTE flags
 #define PRESENT_BIT 0x00000001
 #define READ_WRITE_BIT 0x00000002
 #define PAGE_SIZE_BIT 0x00000080
-#define USER_BIT 0x00000004 
+#define USER_BIT 0x00000004
+#define GLOBAL_BIT 0x100
+
+// flags for page entries
+#define KERNEL_PAGE 0x2
+#define RESERVE_PAGE 0x4
+
 #define CR4_MASK 0x00000010
 #define CR0_MASK 0x80000000
 #define VIDEO_MEM_PAGE_TABLE_ENTRY 0xB8
@@ -36,17 +44,37 @@ so on...
 */
 void map_process_mem(uint32_t pid);
 
-// very similar to setup_paging, just initializes the page directory so it has 
-// one entry to the process page table, and initializes the process page table
-// so it has 1024 entries that map to 
-// setup_paging_for_process(uint32_t pd_addr, uint32_t pt_addr);
+typedef struct fourkb_page_descriptor {
+    uint32_t refcount; // how many virt addresses map to this page?
+    uint32_t flags;
+} fourkb_page_descriptor;
 
-
+typedef struct fourmb_page_descriptor{
+	uint32_t				flags;	///< private flags for physical memory administration
+	int 					refcount;	///< use count or reference count
+	struct fourkb_page_descriptor* 	pages; ///<  The pages
+} fourmb_page_descriptor;
 
 // maps a virtual to physical by tracing the address translation that the virtual
 // address would take, and creating corresponding page table + page directory entries 
 // to get to that physical address.
-void virtual_to_physical_remap_usertable(uint32_t virtual, uint32_t physical, uint32_t user_bit);
+uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags);
+
+/**
+ * @brief If value is null, then it will populate phys_addr with phys mem to use
+ *  otherwise it will increase reference count to that memory 
+ *  So in other words, pass in an address if you know what physical addr you wanna use, otherwise just 
+ * dont pass in anything.
+ * @param phys_addr 
+ * @return uint32_t 
+ */
+uint32_t alloc_4kb_mem(uint32_t* phys_addr);
+
+/**
+ * @brief 4MB page version of above
+ * 
+ */
+uint32_t alloc_4mb_mem(uint32_t* phys_addr);
 
 // align page tables on 4KB boundaries
 extern uint32_t page_directory[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
