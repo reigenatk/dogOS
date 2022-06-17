@@ -16,6 +16,14 @@
  */
 int32_t ece391_sys_set_handler(int32_t signum, void *handler_address);
 
+
+/**
+ * @brief Not used. Instead we link to some assembly in signal_user that will get the same job done (pops stuff off of signal stack frame)
+ * 
+ * @return int32_t 
+ */
+int32_t ece391_sys_sigreturn();
+
 /**
  * @brief The sigaction system call is #13 and basically swaps the sigaction
  * on the currently running task, for signal signum (since each signal number
@@ -57,13 +65,6 @@ int32_t sys_sigsuspend(const sigset_t *mask);
  * @return int32_t 
  */
 int32_t sys_kill(pid_t pid, int sig);
-
-/**
- * @brief 
- * 
- * @return int32_t 
- */
-int32_t ece391_sys_sigreturn();
 
 // forward declare this
 struct task;

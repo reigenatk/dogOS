@@ -525,6 +525,8 @@ int32_t sys_getargs(uint8_t *buf, int32_t nbytes)
     return -1;
   }
   strcpy((int8_t *)buf, (int8_t *)&(cur_task->arguments));
+
+
   return 0;
 }
 
