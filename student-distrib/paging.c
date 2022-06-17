@@ -12,8 +12,8 @@ uint32_t userspace_page_table[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)))
 // another page table to use, allocatable mem (for example for signal_user.S)
 uint32_t allocatable_mem[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 
-#define GET_PAGEDIR_IDX(x) (x/FOURMB)
-#define GET_PAGETAB_IDX(x) (x/FOURKB)
+#define GET_PAGEDIR_IDX(x) (x/FOURMB) // first 10 bits
+#define GET_PAGETAB_IDX(x) ((x / FOURKB) & (0x3FF)) // next 10 bits
 
 // a description of the free memory to allocate. We are doing 4 * 1024 4KB chunks
 // which is 4*4MB which is 16MB of memory, starting at physical addr 0x10000000
@@ -81,7 +81,7 @@ uint32_t add_page_table(uint32_t virtual, uint32_t page_table_addr, uint32_t fla
 		return -EINVAL;
 	}
 
-  page_directory[page_dir_idx] = (virtual & FIRST_TWENTY_BITS) | flags;
+  page_directory[page_dir_idx] = (page_table_addr & FIRST_TWENTY_BITS) | flags;
 }
 
 /* void setup_paging 
@@ -102,8 +102,8 @@ void setup_paging() {
   // start by setting all the data structures to zero
   memset(page_table, 0, sizeof(page_table));
   memset(page_directory, 0, sizeof(page_directory));
-  memset(allocatable_mem_table, 0, sizeof(allocatable_mem_table));
-  memset(fourmb_mem_table, 0, sizeof(fourmb_mem_table));
+  
+  
 
   //initialize page directory and page table entries to default values
   int i;
@@ -287,24 +287,30 @@ first byte of a 4-KByte page. The bits in this field are interpreted as the
 */
 uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
   // first 10 bits are offset into page directory, next 10 is offset into table, final is offset into page
-  uint32_t offset_into_pd = virtual & FIRST_TEN_BITS_MASK;
-  uint32_t offset_into_pt = virtual & NEXT_TEN_BITS;
+  uint32_t offset_into_pd = GET_PAGEDIR_IDX(virtual);
+  uint32_t offset_into_pt = GET_PAGETAB_IDX(virtual);
 
   // check if page directory entry present
-  if (page_directory[offset_into_pd] & PRESENT_BIT == 0) {
+  if (!(page_directory[offset_into_pd] & PRESENT_BIT)) {
     return -EINVAL;
   }
 
-  uint32_t* page_table = page_directory[offset_into_pd] & FIRST_TWENTY_BITS;
+  uint32_t* page_table = (uint32_t*) (page_directory[offset_into_pd] & FIRST_TWENTY_BITS);
 
-  // check if the page has already been allocated. Technically we could just set its value again so I'm
-  // not sure why this check is necessary?
-  if (page_table[offset_into_pt] & PRESENT_BIT == 1) {
+
+  // check if this virtual addr has already been allocated to a page yet. If so then don't change it since
+  // it already exists
+  if (!page_table || page_table[offset_into_pt] & PRESENT_BIT == 1) {
     return -EEXIST;
   } 
 
   // check if the 4MB page its a part of and the 4kb page itself has been allocated, that is, refcount != 0
-  if (allocatable_mem_table[GET_PAGEDIR_IDX(physical)])
+  // also check if the page inside of that is marked as already having been allocated.
+  // key idea, if not allocated then dont map the memory. We have to keep track of every memory we give away so allocate first.
+  if (fourmb_mem_table[GET_PAGEDIR_IDX(physical)].refcount <= 0 || fourmb_mem_table[GET_PAGEDIR_IDX(physical)].pages[GET_PAGETAB_IDX(physical)].refcount <= 0) {
+    return -EACCES;
+  }
+
 
   // ok its fine, let's do the mapping
   page_table[offset_into_pt] = (physical & FIRST_TWENTY_BITS) | flags;

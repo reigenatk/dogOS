@@ -9,6 +9,7 @@
 #define MAX_OPEN_FILES 8
 #define MAX_TASKS 64
 
+
 /*
 The final bit of per-task state that needs to be allocated is a kernel stack 
 for each user-level program. Since
@@ -24,6 +25,9 @@ memory for the process control block
 */
 #define TASK_STACK_SIZE 0x2000 // (8kb per task for the stack)
 #define KERNEL_MEM_BOTTOM 0x800000 // 8MB
+
+// tss.esp0 in scheduler and systemcalls.c use this
+#define TSS_ESP_CALC(pid) KERNEL_MEM_BOTTOM - ((pid) * TASK_STACK_SIZE) - 4
 
 /*
 The program image itself is linked to execute at virtual address 0x08048000. The way to get this

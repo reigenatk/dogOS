@@ -177,6 +177,7 @@ int32_t sys_execute(const uint8_t *command)
     return -1;
   }
 
+
   // AT THIS POINT WE KNOW WE WILL RUN THE PROCESS, ALL CHECKS COMPLETE
 
   task *t = init_task(new_pid);
@@ -208,6 +209,9 @@ int32_t sys_execute(const uint8_t *command)
     return -1;
   }
 
+  // mark as running status?
+  tasks[new_pid].status = TASK_ST_RUNNING;
+
   // https://wiki.osdev.org/Context_Switching
   // the important fields are SS0 and
   // ESP0. These fields contain the stack segment and stack pointer that the x86 will put into SS and ESP when performing
@@ -222,7 +226,7 @@ int32_t sys_execute(const uint8_t *command)
   // This is kernel stack pointer. We want this to point at 8MB physical, then 8MB-8kb physical, etc.
   // we know that 4MB-8MB maps directly thanks to the kernel page entry we made in setup_paging()
   // also we need -4 here because 8MB virtual doesn't use the right page directory entry
-  tss.esp0 = KERNEL_MEM_BOTTOM - ((new_pid - 1) * TASK_STACK_SIZE) - 4;
+  tss.esp0 = TSS_ESP_CALC(new_pid);
 
   /*
   Finally, when a new task is started with the execute system call,

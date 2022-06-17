@@ -115,13 +115,13 @@ task *init_task(uint32_t pid)
 uint32_t calculate_task_physical_address(uint32_t pid)
 {
   // need to subtract 1 because process ID starts at 1
-  return KERNEL_MEM_BOTTOM + FOURMB * (pid - 1);
+  return KERNEL_MEM_BOTTOM + FOURMB * (pid);
 }
 
 // 8kb per task, going up from bottom of kernel memory (8MB)
 uint32_t calculate_task_pcb_pointer(uint32_t pid)
 {
-  return KERNEL_MEM_BOTTOM - (TASK_STACK_SIZE) * (pid);
+  return KERNEL_MEM_BOTTOM - (TASK_STACK_SIZE) * (pid+1); // the +1 since otherwise it starts at pid 0 = 0x800000 which is page fault
 }
 
 /*

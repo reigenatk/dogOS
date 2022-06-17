@@ -88,7 +88,7 @@ void pit_interrupt_handler() {
 
     // change tss to reflect values of new task
     uint32_t next_task_pid = terminals[next].current_task->pid;
-    tss.esp0 = KERNEL_MEM_BOTTOM - ((next_task_pid-1) * TASK_STACK_SIZE) - 4;
+    tss.esp0 = TSS_ESP_CALC(next_task_pid);
     tss.ss0 = KERNEL_DS;
 
     // we gotta remap this everytime so that the addr 0x8000000 virt translates

@@ -183,13 +183,12 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Initializing RTC\n");
     open_RTC((uint8_t*) "rtc");
 
-    init_tasks();
 
     // paging
     printf("Initializing Paging\n");
     setup_paging();
     signals_init();
-
+    init_tasks();
     init_terminal();
 
     printf("Initializing PIT\n");

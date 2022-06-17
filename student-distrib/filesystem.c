@@ -256,8 +256,6 @@ int32_t read_file(int32_t fd, void *buf, int32_t nbytes)
   // reset the buf to null values
   memset((uint8_t *)buf, 0, nbytes);
 
-  // here I used 1 hardcode since we dont have scheduler but usually this value would be
-  // the pid of the current running task in the scheduler file
   task *PCB_data = (task *)get_task();
 
   // all we have is a file descriptor number but we need an inode to use read_data

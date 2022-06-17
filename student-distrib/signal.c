@@ -7,8 +7,6 @@
 #include "ece391sysnum.h"
 #include "libc/sys/wait.h"
 
-#define SIGNAL_BASE_ADDR	0x8000000 ///< Base address of this page
-
 int ece391_signal_support[] = {
   SIGFPE,
   SIGSEGV,
@@ -121,7 +119,7 @@ void signals_init() {
   alloc_4kb_mem(&addr);
 
   // add that address to the page table
-  map_virt_to_phys(SIGNAL_BASE_ADDR, map_virt_to_phys, PRESENT_BIT | READ_WRITE_BIT | USER_BIT | GLOBAL_BIT);
+  map_virt_to_phys(SIGNAL_BASE_ADDR, addr, PRESENT_BIT | READ_WRITE_BIT | USER_BIT | GLOBAL_BIT);
   flush_tlb();
   // finally we must memcpy our contents from the signal_user.S file to this newly allocated page
   memcpy(SIGNAL_BASE_ADDR, &(signal_user_base), size_of_signal_asm);
