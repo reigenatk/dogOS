@@ -100,8 +100,8 @@ void setup_paging() {
   // we will set 16MB of memory free to be allocated, starting at 2GB (so from 2GB to 2GB+16MB)
 
   // start by setting all the data structures to zero
-  memset(page_table, 0, sizeof(page_table));
-  memset(page_directory, 0, sizeof(page_directory));
+  // memset(page_table, 0, sizeof(page_table));
+  // memset(page_directory, 0, sizeof(page_directory));
   
   
 
@@ -129,25 +129,25 @@ void setup_paging() {
   fourmb_mem_table[0].refcount = 1;
   fourmb_mem_table[1].refcount = 1;
 
-  // the four 4MB pages, totalling 16MB starting at 2GB. Mark these as counted
-  fourmb_mem_table[512].refcount = 1;
-  fourmb_mem_table[512].pages = allocatable_mem_table[0]; 
-  fourmb_mem_table[513].refcount = 1;
-  fourmb_mem_table[513].pages = allocatable_mem_table[1]; 
-  fourmb_mem_table[514].refcount = 1;
-  fourmb_mem_table[514].pages = allocatable_mem_table[2]; 
-  fourmb_mem_table[515].refcount = 1;
-  fourmb_mem_table[515].pages = allocatable_mem_table[3]; 
+  // the four 4MB pages, totalling 16MB starting at 0x10000000. Mark these as counted
+  fourmb_mem_table[64].refcount = 1;
+  fourmb_mem_table[64].pages = allocatable_mem_table[0]; 
+  fourmb_mem_table[65].refcount = 1;
+  fourmb_mem_table[65].pages = allocatable_mem_table[1]; 
+  fourmb_mem_table[66].refcount = 1;
+  fourmb_mem_table[66].pages = allocatable_mem_table[2]; 
+  fourmb_mem_table[67].refcount = 1;
+  fourmb_mem_table[67].pages = allocatable_mem_table[3]; 
 
   // assign some custom flags as well
   fourmb_mem_table[0].flags |= KERNEL_PAGE;
   fourmb_mem_table[1].flags |= KERNEL_PAGE;
   fourmb_mem_table[2].flags |= KERNEL_PAGE;
 
-  fourmb_mem_table[512].refcount |= RESERVE_PAGE;
-  fourmb_mem_table[513].refcount |= RESERVE_PAGE;
-  fourmb_mem_table[514].refcount |= RESERVE_PAGE;
-  fourmb_mem_table[515].refcount |= RESERVE_PAGE;
+  fourmb_mem_table[64].refcount |= RESERVE_PAGE;
+  fourmb_mem_table[65].refcount |= RESERVE_PAGE;
+  fourmb_mem_table[66].refcount |= RESERVE_PAGE;
+  fourmb_mem_table[67].refcount |= RESERVE_PAGE;
 
   // actually assign the page table entries into page dir
   add_page_table(0, page_table, PRESENT_BIT | READ_WRITE_BIT);
@@ -243,7 +243,7 @@ uint32_t alloc_empty_4kb_mem() {
     }
   }
   // otherwise, we found some phys mem with no references. Increment ref and return it
-  allocatable_mem_table[mem_allocate_idx / 1024][mem_allocate_idx].refcount++;
+  allocatable_mem_table[mem_allocate_idx / 1024][mem_allocate_idx % 1024].refcount++;
   return ALLOCATABLE_MEM_START + mem_allocate_idx * (FOURKB);
 }
 
@@ -314,4 +314,5 @@ uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
 
   // ok its fine, let's do the mapping
   page_table[offset_into_pt] = (physical & FIRST_TWENTY_BITS) | flags;
+  return 0;
 }

@@ -526,7 +526,10 @@ int32_t sys_getargs(uint8_t *buf, int32_t nbytes)
   }
   strcpy((int8_t *)buf, (int8_t *)&(cur_task->arguments));
 
-
+  // if no arguments (aka buf == "") also return -1
+  if (strlen((int8_t*) &(cur_task->arguments)) == 0) {
+    return -1;
+  }
   return 0;
 }
 

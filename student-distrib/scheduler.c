@@ -30,6 +30,11 @@ void init_PIT() {
 
 }
 
+void scheduler_update_taskregs(struct s_regs *regs) {
+  task *curr_task = get_task();
+  memcpy(&curr_task->regs, regs, sizeof(struct s_regs));
+}
+
 /*
 Lastly, keep in mind that even though a process 
 can be interrupted in either user mode or in kernel mode (while waiting

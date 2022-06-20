@@ -37,6 +37,8 @@
 #define SIGUSR2		31	///< User defined signal 2
 #define SIG_MAX		32	///< Total number of signals
 
+#ifndef ASM
+
 // default signal handlers
 // https://elixir.bootlin.com/linux/v4.2/source/include/uapi/asm-generic/signal-defs.h#L23
 // btw these are the values 0, 1 and -1 cast to function ptr
@@ -79,5 +81,7 @@ struct sigaction {
 };
 
 typedef struct sigaction sigaction_t;
+
+#endif // ASM
 
 #endif

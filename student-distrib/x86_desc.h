@@ -28,6 +28,9 @@
 #define KERNEL_TSS  0x0030 // 110
 #define KERNEL_LDT  0x0038 // 111
 
+#define IDT_DPL_KERNEL	0
+#define IDT_DPL_USER	3
+
 /* Size of the task state segment (TSS) */
 #define TSS_SIZE    104
 

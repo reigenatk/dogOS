@@ -1,7 +1,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-
+#include "task.h"
 
 #define HUNDRED_HERTZ_DIVIDER 11932
 #define CHANNEL_0 0x40
@@ -32,5 +32,17 @@ when the task is not the active one (see the previous section
 
 void init_PIT();
 void pit_interrupt_handler();
+
+/**
+ *	Update the regs for the current user process
+ *
+ *	@note This function is called at the beginning of the ISR, before any
+ *		  handler is executed. Thus the `regs` field should already be valid
+ *		  when any handler is executing. Handlers do not need to update `regs`
+ *		  unless it is intended.
+ *
+ *	@param regs: pointer to the saved registers and iret structure
+ */
+void scheduler_update_taskregs(struct s_regs *regs);
 
 #endif
