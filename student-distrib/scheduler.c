@@ -3,8 +3,15 @@
 #include "i8259.h"
 #include "paging.h"
 #include "task.h"
+#include "signal.h"
 #include "x86_desc.h"
 #include "system_calls.h"
+
+int scheduling_on_flag = 0;
+
+void scheduling_start() {
+  scheduling_on_flag = 1;
+}
 
 // https://wiki.osdev.org/Programmable_Interval_Timer#Operating_Modes
 // 1.193182 MHz, we want 100 Hz, since 10 ms = (1 / 100) sec and 
@@ -30,9 +37,64 @@ void init_PIT() {
 
 }
 
+void pit_interrupt_handler() {
+  if (scheduling_on_flag) {
+    next_scheduled_task();
+  }
+  send_eoi(TIMER_IRQ_NUM);
+}
+
 void scheduler_update_taskregs(struct s_regs *regs) {
   task *curr_task = get_task();
   memcpy(&curr_task->regs, regs, sizeof(struct s_regs));
+}
+
+void scheduler_change_task(task* from, task* to, uint32_t next_terminal) {
+  // we gotta remap this everytime so that the addr 0x8000000 virt translates
+  // to the proper physical address
+  uint32_t next_task_pid = to->pid;
+  map_process_mem(next_task_pid);
+  
+  task *from_pcb = &tasks[from->pid];
+  // check for pending signals on the process we are switching from
+  if (from_pcb->signals) {
+    // mask out the blocked signals
+    sigset_t signals_pending = from_pcb->signals & (~from_pcb->signal_mask);
+    int i;
+
+    // check ALL pending signals and run corresponding handlers
+    for (i = 1; i < SIG_MAX; i++) {
+      if (sigismember(&signals_pending, i)) {
+        // mark this signal as ran
+        sigdelset(&from_pcb->signals, i);
+
+        // now run the handler. this will run either default handler or custom handler
+        signal_exec(from_pcb, i);
+
+        // now the scheduler will tick below, and start execution at newly modified registers from signal_exec, which will run the handler
+        // or run a syscall to exit or something like that
+      }
+    }
+  }
+  
+  // change tss to reflect values of new task
+  
+  tss.esp0 = TSS_ESP_CALC(next_task_pid);
+  tss.ss0 = KERNEL_DS;
+
+  uint32_t next_esp = to->esp;
+  uint32_t next_ebp = to->ebp;
+
+  cur_terminal_running = next_terminal;
+  
+  send_eoi(TIMER_IRQ_NUM);
+  // switch to next task by changing esp, ebp
+  asm volatile(
+    "movl %0, %%esp;"
+    "movl %1, %%ebp;"
+    : 
+    : "r"(next_esp), "r"(next_ebp)
+  );
 }
 
 /*
@@ -44,11 +106,9 @@ on the state before the interrupt. Each process should
 have its own kernel stack, but be careful not to implicitly assume
 either type of transition.
 */
-void pit_interrupt_handler() {
-  
+void next_scheduled_task() {
   if (terminals[cur_terminal_running].num_processes_running == 0) {
-    // start the shell on this process
-
+    // if no process running yet on this terminal, start shell
     task t;
     asm volatile(
       "movl %%esp, %0;"
@@ -71,7 +131,7 @@ void pit_interrupt_handler() {
   }
   
   // so above we start a shell if we dont already have one. Then we 
-  // gotta switch to the next task
+  // save the esp and ebp currently into the current task pcb
   task* cur_task = terminals[cur_terminal_running].current_task;
   asm volatile(
     "movl %%esp, %0;"
@@ -89,29 +149,9 @@ void pit_interrupt_handler() {
     return;
   }
   else {
-    // this next terminal has a process on it too. So we do a task switch    
+    // this next terminal has a process on it too. So we do a task switcH
+    scheduler_change_task(cur_task, terminals[next].current_task, next);
 
-    // change tss to reflect values of new task
-    uint32_t next_task_pid = terminals[next].current_task->pid;
-    tss.esp0 = TSS_ESP_CALC(next_task_pid);
-    tss.ss0 = KERNEL_DS;
-
-    // we gotta remap this everytime so that the addr 0x8000000 virt translates
-    // to the proper physical address
-    map_process_mem(next_task_pid);
-    
-    uint32_t next_esp = terminals[next].current_task->esp;
-    uint32_t next_ebp = terminals[next].current_task->ebp;
-
-    cur_terminal_running = next;
-    send_eoi(TIMER_IRQ_NUM);
-    // switch to next task by changing esp, ebp
-    asm volatile(
-      "movl %0, %%esp;"
-      "movl %1, %%ebp;"
-      : 
-      : "r"(next_esp), "r"(next_ebp)
-    );
   }
   
 }

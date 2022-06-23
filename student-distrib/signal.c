@@ -93,8 +93,8 @@ int32_t sys_sigaction(int signum, int sigaction_ptr, int oldsigaction_ptr) {
   if (signum > SIG_MAX || signum < 0) {
     return -EINVAL;
   }
-  // get current running task
-  task* t = get_task();
+  // get current running task pid, offset it into task list (recall that all our tasks are in a tasks array, not kernel pcb memory)
+  task* t = tasks + get_task()->pid;
 
   // intermediate sigaction ptr to help with moving stuff around
   sigaction_t* intermediate;
@@ -130,7 +130,7 @@ int32_t sys_kill(pid_t pid, int sig) {
     return -EINVAL;
   }
   // Send the signal to the process
-  // which is same as just adding the signal to the process' "signals" mask
+  // which is same as just adding the signal to the process' "signals" mask (pending signals)
   sigaddset(&tasks[pid].signals, sig);
 }
 
@@ -228,6 +228,8 @@ void signal_handler_stop(task *proc, int sig) {
   proc->status = TASK_ST_SLEEP;
   proc->exit_status = sig | WIFSTOPPED(-1);
 }
+
+
 
 int32_t ece391_sys_set_handler(int32_t signum, void *handler_address)
 {

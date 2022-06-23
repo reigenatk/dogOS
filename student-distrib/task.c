@@ -45,6 +45,8 @@ task *init_task(uint32_t pid)
 {
 
   /*
+  NOTE: this is an OLD DESCRIPTION. we aren't gonna do this no more. Our tasks are instead gonna live in a array called tasks
+
   The next piece to support tasks in your operating system is per-task data structures, for example, the process control
   block (PCB). One bit of per-task state that needs to be saved is the file array, described earlier; another is the signal
   information. You may need to store some other things in the process control block; you must figure the rest out on

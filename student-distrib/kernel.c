@@ -165,7 +165,6 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Populating IDT with descriptors");
 
     init_interrupt_descriptors(idt);
-    lidt(idt_desc_ptr);
 
     // initiate filesystem
     printf("Init Filesystem");
@@ -188,12 +187,13 @@ void entry(unsigned long magic, unsigned long addr) {
     // paging
     printf("Initializing Paging\n");
     setup_paging();
-    // signals_init();
+    signals_init();
     init_tasks();
     init_terminal();
 
     printf("Initializing PIT\n");
     init_PIT();
+    scheduling_start();
 
     // launch first terminal
 

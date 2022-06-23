@@ -1,0 +1,6 @@
+make.exe --dry-run --always-make --keep-going --print-directory
+make.exe: Entering directory 'c:/Users/richa/Desktop/Classes/391/ece391/ece391_share/work/a/mp3_group_08'
+make.exe: Leaving directory 'c:/Users/richa/Desktop/Classes/391/ece391/ece391_share/work/a/mp3_group_08'
+ 
+make.exe: *** No targets specified and no makefile found.  Stop.
+

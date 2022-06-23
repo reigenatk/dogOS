@@ -31,7 +31,16 @@ when the task is not the active one (see the previous section
 */
 
 void init_PIT();
+void next_scheduled_task();
 void pit_interrupt_handler();
+
+// set this to 1 once we are ready to start scheduling
+extern int scheduling_on_flag;
+
+/**
+ *	Turn on scheduler
+ */
+void scheduling_start();
 
 /**
  *	Update the regs for the current user process

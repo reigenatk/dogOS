@@ -2,6 +2,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "signal.h"
+#include "scheduler.h"
 
 // this is standard interrupt vector for keyboard, as seen in the course notes. It's also IRQ1 on master PIC.
 #define TIMER_CHIP_INTERRUPT_VECTOR 0x20
@@ -116,7 +117,7 @@ void add_interrupt_handler_functions(idt_desc_t *idt) {
   idt_make_interrupt(idt + RTC_INTERRUPT_VECTOR, rtc_handler_wrapper, IDT_DPL_KERNEL);
 
   // Generic syscall handler 0x80
-  idt_make_interrupt(idt + SYSCALL_INTERRUPT_VECTOR, syscall_handler_wrapper, IDT_DPL_KERNEL);
+  idt_make_interrupt(idt + SYSCALL_INTERRUPT_VECTOR, syscall_handler_wrapper, IDT_DPL_USER);
 }
 
 void idt_bp_handler() {
@@ -125,15 +126,18 @@ void idt_bp_handler() {
 
 void idt_pagefault_handler(int eip, int err, int addr) {
   clear(); 
-  bluescreen();                                                               
+  // bluescreen();                                                               
   change_write_head(0, 20);                      
-  printf("faulted at addr: 0x%x, error code 0x%x, eip 0x%x", addr, err, eip);
-  sti();
-  while(1);
+  printf("process pagefaulted at addr: 0x%x, error code 0x%x, eip 0x%x", addr, err, eip);
+  // terminate offending process
+  sys_kill(get_task()->pid, SIGSEGV);
+  next_scheduled_task();
 }
 
 void idt_signal_handler(int signo) {
+  printf("Signal triggered with signal num %d", signo);
   sys_kill(get_task()->pid, signo);
+  next_scheduled_task();
 }
 
 void idt_panic_handler(char *msg) {

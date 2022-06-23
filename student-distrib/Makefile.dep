@@ -1,5 +1,6 @@
 boot.o: boot.S multiboot.h x86_desc.h types.h
 interrupt_wrapper.o: interrupt_wrapper.S
+scheduler_asm.o: scheduler_asm.S
 signal_user.o: signal_user.S
 system_call_public.o: system_call_public.S ece391sysnum.h x86_desc.h \
   types.h
@@ -9,13 +10,13 @@ filesystem.o: filesystem.c filesystem.h types.h lib.h task.h \
 i8259.o: i8259.c i8259.h types.h lib.h
 interrupt_handlers.o: interrupt_handlers.c interrupt_handlers.h types.h \
   x86_desc.h lib.h signal.h libc/sys/types.h task.h libc/signal.h \
-  libc/../types.h
+  libc/../types.h scheduler.h
 kernel.o: kernel.c multiboot.h types.h x86_desc.h lib.h i8259.h debug.h \
   task.h libc/signal.h libc/../types.h interrupt_handlers.h paging.h \
   keyboard.h RTC.h filesystem.h scheduler.h terminal.h
 keyboard.o: keyboard.c keyboard.h types.h i8259.h lib.h RTC.h \
-  system_calls.h terminal.h task.h libc/signal.h libc/../types.h \
-  interrupt_handlers.h x86_desc.h
+  system_calls.h libc/signal.h libc/../types.h libc/sys/types.h \
+  terminal.h task.h interrupt_handlers.h x86_desc.h
 lib.o: lib.c lib.h types.h terminal.h task.h libc/signal.h \
   libc/../types.h interrupt_handlers.h x86_desc.h filesystem.h
 paging.o: paging.c paging.h types.h lib.h task.h libc/signal.h \
@@ -24,18 +25,18 @@ RTC.o: RTC.c RTC.h types.h i8259.h lib.h tests.h task.h libc/signal.h \
   libc/../types.h interrupt_handlers.h x86_desc.h terminal.h
 scheduler.o: scheduler.c scheduler.h task.h types.h libc/signal.h \
   libc/../types.h interrupt_handlers.h x86_desc.h terminal.h i8259.h \
-  paging.h lib.h system_calls.h
+  paging.h lib.h signal.h libc/sys/types.h system_calls.h
 signal.o: signal.c signal.h libc/sys/types.h types.h task.h libc/signal.h \
   libc/../types.h interrupt_handlers.h x86_desc.h signal_user.h errno.h \
   paging.h lib.h ece391sysnum.h libc/sys/wait.h libc/sys/types.h
-system_calls.o: system_calls.c system_calls.h types.h lib.h filesystem.h \
-  RTC.h keyboard.h task.h libc/signal.h libc/../types.h \
-  interrupt_handlers.h x86_desc.h paging.h terminal.h errno.h
+system_calls.o: system_calls.c system_calls.h types.h libc/signal.h \
+  libc/../types.h libc/sys/types.h lib.h filesystem.h RTC.h keyboard.h \
+  task.h interrupt_handlers.h x86_desc.h paging.h terminal.h errno.h
 task.o: task.c task.h types.h libc/signal.h libc/../types.h \
   interrupt_handlers.h x86_desc.h paging.h lib.h filesystem.h RTC.h \
   keyboard.h terminal.h errno.h
 terminal.o: terminal.c terminal.h types.h task.h libc/signal.h \
   libc/../types.h interrupt_handlers.h x86_desc.h lib.h system_calls.h \
-  paging.h
+  libc/sys/types.h paging.h
 tests.o: tests.c tests.h x86_desc.h types.h lib.h filesystem.h \
   interrupt_handlers.h paging.h

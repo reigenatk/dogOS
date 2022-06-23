@@ -80,13 +80,13 @@ syscall_handler_wrapper:
 	push %ecx 
 	push %ebx 
 
-	# check if eax is in the range [1,10], if not return -1
+	# check if eax is in the range [1,256], if not return -1
 	cmp $1, %eax 
 	jl return_negative_one
-	cmp $10, %eax
+	cmp $256, %eax
 	jg return_negative_one
 
-	# use eax (syscall number, 1-10) as index for jump table. Subtract 1 because it starts at 1
+	# use eax (syscall number, 1-256) as index for jump table. Subtract 1 because it starts at 1
 	sub $1, %eax
 	sti
 	call *jump_table(,%eax, 4) # jump to the syscall's C function
@@ -112,7 +112,7 @@ return:
 
 jump_table:
 	.long sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, ece391_sys_set_handler, ece391_sys_sigreturn
-
+	.long sys_sigaction, sys_kill, sys_sigsuspend, sys_sigprocmask
 # Refer to: https://wiki.osdev.org/Getting_to_Ring_3
 # or this:
 # Kernel code executes at privilege level 0, while user-level code must execute at privilege level 3. The x86 processor
