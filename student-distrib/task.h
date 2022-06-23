@@ -95,13 +95,14 @@ typedef struct task_t {
 
   // signal stuff
   struct sigaction sigacts[32]; ///< Signal handlers
-	sigset_t signals;	///< Pending signals
+	sigset_t pending_signals;	///< Pending signals
 	sigset_t signal_mask; ///< Deferred signals
 	uint32_t exit_status; ///< Status to report on `wait`
 
   // current ebp + esp
   uint32_t esp;
   uint32_t ebp;
+  uint32_t k_esp;
   uint8_t arguments[128];
 
   // store ptr to parent task. IF its the first shell it will point 

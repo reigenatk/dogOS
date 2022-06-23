@@ -54,4 +54,12 @@ void scheduling_start();
  */
 void scheduler_update_taskregs(struct s_regs *regs);
 
+/**
+ *
+ *	assembly function to do actual iret to switch task
+ *
+ *	@param reg: the whole structure to iret
+ */
+void scheduler_iret(struct s_regs* reg);
+
 #endif

@@ -419,25 +419,48 @@ simd_fp_exception:
 
 .globl keyboard_handler_wrapper, rtc_handler_wrapper, pit_handler_wrapper
 
-# wouldn't work unless I added an IRET. Needed to do this because otherwise it would 
-# generate general protection exception. 
-# https://wiki.osdev.org/Interrupt_Service_Routines- just add an ASM wrapper so 
-# the function prologue (leave, ret) doesn't get called. We only need IRET here
+# these are interrupt handlers for devices like pit, keyboard, rtc
+# we have to iret because these run in kernel mode and obviously after we are done servicing the request
+# we should return back to userspace
 keyboard_handler_wrapper:
-	cli											
+	pusha 
+	pushl REG_MAGIC
+	movl %esp, interrupt_register_info
+
+	pushl interrupt_register_info
+	call scheduler_update_taskregs
+	addl $4, %esp
+
 	call keyboard_INT
-	sti						
-	iret									
+	addl $4, %esp
+	popal
+	iret						
 
 rtc_handler_wrapper:			
-  cli			
-	call RTC_interrupt_handler																
-	sti
+	pusha 
+	pushl REG_MAGIC
+	movl %esp, interrupt_register_info
+
+	pushl interrupt_register_info
+	call scheduler_update_taskregs
+	addl $4, %esp
+
+	call RTC_interrupt_handler	
+	addl $4, %esp
+	popal
 	iret	
 
 pit_handler_wrapper:		
-	cli
-	call next_scheduled_task										
-	sti
-	iret	
+	pusha 
+	pushl REG_MAGIC
+	movl %esp, interrupt_register_info
+
+	pushl interrupt_register_info
+	call scheduler_update_taskregs
+	addl $4, %esp
+
+	call next_scheduled_task	
+	addl $4, %esp
+	popal
+	iret
 

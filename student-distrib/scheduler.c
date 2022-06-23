@@ -8,6 +8,7 @@
 #include "system_calls.h"
 
 int scheduling_on_flag = 0;
+static int scheduler_idx = 0; // static, meaning seen only in this file
 
 void scheduling_start() {
   scheduling_on_flag = 1;
@@ -49,7 +50,7 @@ void scheduler_update_taskregs(struct s_regs *regs) {
   memcpy(&curr_task->regs, regs, sizeof(struct s_regs));
 }
 
-void scheduler_change_task(task* from, task* to, uint32_t next_terminal) {
+void scheduler_change_task(task* from, task* to) {
   // we gotta remap this everytime so that the addr 0x8000000 virt translates
   // to the proper physical address
   uint32_t next_task_pid = to->pid;
@@ -57,16 +58,16 @@ void scheduler_change_task(task* from, task* to, uint32_t next_terminal) {
   
   task *from_pcb = &tasks[from->pid];
   // check for pending signals on the process we are switching from
-  if (from_pcb->signals) {
+  if (from_pcb->pending_signals) {
     // mask out the blocked signals
-    sigset_t signals_pending = from_pcb->signals & (~from_pcb->signal_mask);
+    sigset_t signals_pending = from_pcb->pending_signals & (~from_pcb->signal_mask);
     int i;
 
     // check ALL pending signals and run corresponding handlers
     for (i = 1; i < SIG_MAX; i++) {
       if (sigismember(&signals_pending, i)) {
         // mark this signal as ran
-        sigdelset(&from_pcb->signals, i);
+        sigdelset(&from_pcb->pending_signals, i);
 
         // now run the handler. this will run either default handler or custom handler
         signal_exec(from_pcb, i);
@@ -78,23 +79,50 @@ void scheduler_change_task(task* from, task* to, uint32_t next_terminal) {
   }
   
   // change tss to reflect values of new task
-  
-  tss.esp0 = TSS_ESP_CALC(next_task_pid);
+  // page 104 of ULT if you wanna know more
+  tss.esp0 = to->k_esp;
   tss.ss0 = KERNEL_DS;
-
-  uint32_t next_esp = to->esp;
-  uint32_t next_ebp = to->ebp;
-
-  cur_terminal_running = next_terminal;
-  
   send_eoi(TIMER_IRQ_NUM);
-  // switch to next task by changing esp, ebp
-  asm volatile(
-    "movl %0, %%esp;"
-    "movl %1, %%ebp;"
-    : 
-    : "r"(next_esp), "r"(next_ebp)
-  );
+
+  // so iret from PIT interrupt handler will never get hit?
+  scheduler_iret(&(to->regs));
+}
+
+/**
+ * @brief Find the next RUNNING task. Break out of while loop once we find it, and context switch to it. This just goes up the PIDs 
+ * starting at 0 until we hit the max PID valuee, then loops backs and tries again
+ */
+void next_scheduled_task() {
+  task *t = get_task();
+  pid_t pid = t->pid;
+  int sanity_count = 0;
+  while (1) {
+    switch (tasks[scheduler_idx].status) {
+      case TASK_ST_RUNNING:
+        break;
+      case TASK_ST_SLEEP:
+        // if it has a signal pending and it isn't masked out then we will run it
+        if (tasks[scheduler_idx].pending_signals && (~tasks[scheduler_idx].signal_mask)) {
+          break;
+        }
+      default:
+        // otherwise, this task is not runnable. Skip to next one in list
+        sanity_count++;
+        scheduler_idx++;
+        if (scheduler_idx >= MAX_TASKS) {
+          scheduler_idx = 0;
+        }
+        if (sanity_count > MAX_TASKS) {
+          printf("[CRITICAL] NO POSSIBLE PROCESS TO EXECUTE!");
+					while (1);
+        }
+        continue;
+    }
+    break;
+  }
+
+  // actually run the task
+  scheduler_change_task(t, &tasks[scheduler_idx]);
 }
 
 /*
@@ -106,7 +134,7 @@ on the state before the interrupt. Each process should
 have its own kernel stack, but be careful not to implicitly assume
 either type of transition.
 */
-void next_scheduled_task() {
+void next_scheduled_task_old() {
   if (terminals[cur_terminal_running].num_processes_running == 0) {
     // if no process running yet on this terminal, start shell
     task t;
@@ -150,7 +178,7 @@ void next_scheduled_task() {
   }
   else {
     // this next terminal has a process on it too. So we do a task switcH
-    scheduler_change_task(cur_task, terminals[next].current_task, next);
+    scheduler_change_task(cur_task, terminals[next].current_task);
 
   }
   
