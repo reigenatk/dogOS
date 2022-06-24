@@ -8,7 +8,16 @@
 
 // All of our running tasks! Initialized to zero since its global
 task tasks[MAX_TASKS];
+
+// allocation index
 uint32_t task_allocator = 0;
+
+typedef struct s_task_ks {
+	int32_t pid;
+	uint8_t stack[16380]; // Empty space to fill 16kb
+} __attribute__((__packed__)) task_ks_t;
+
+task_ks_t *kstack = (task_ks_t *)0x800000;
 
 void init_tasks() {
   memset(tasks, 0, sizeof(tasks));
@@ -193,4 +202,42 @@ int push_buf_onto_task_stack(uint32_t* esp, uint8_t* buf, uint32_t len) {
   *esp &= ~3;  // align to DWORD (last two bits zeroed)
   memcpy(esp, buf, len);
   return 0;
+}
+
+int32_t sys_fork() {
+  int32_t cur_pid = sys_getpid();
+  int32_t child_pid = get_new_process_id();
+  if (get_new_process_id < 0) {
+    // if out of PIDs
+    return child_pid;
+  }
+  task* cur_task_ptr = tasks + cur_pid;
+  task* child_task_ptr = tasks + child_pid;
+
+  // copy task struct over then change some stuff
+  memcpy(child_task_ptr, cur_task_ptr, sizeof(task));
+  child_task_ptr->pid = child_pid;
+  child_task_ptr->parent_pid = cur_pid;
+
+  // kernel stack initialization
+  // loop thru all the available kernel stacks and find the first one not being used
+  int i;
+  for (i = 0; i < 256; i++) {
+    if (kstack[i].pid < 0) {
+      // then we can use this kernel stack
+      kstack[i].pid = child_pid;
+      child_task_ptr->k_esp = &kstack[i].stack;
+      break;
+    }
+  }
+  if (i == 256) {
+    // failed to allocate a kernel stack
+    return -ENOMEM;
+  }
+
+
+}
+
+int32_t sys_getpid() {
+  return get_task()->pid;
 }

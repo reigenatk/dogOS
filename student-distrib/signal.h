@@ -15,7 +15,7 @@
  * @param handler_address 
  * @return int32_t 
  */
-int32_t ece391_sys_set_handler(int32_t signum, void *handler_address);
+int32_t sys_set_handler(int32_t signum, void *handler_address);
 
 
 /**
@@ -23,7 +23,7 @@ int32_t ece391_sys_set_handler(int32_t signum, void *handler_address);
  * 
  * @return int32_t 
  */
-int32_t ece391_sys_sigreturn();
+int32_t sys_sigreturn();
 
 /**
  * @brief The sigaction system call is #13 and basically swaps the sigaction

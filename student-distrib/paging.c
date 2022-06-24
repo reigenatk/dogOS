@@ -31,7 +31,7 @@ uint32_t mem_allocate_idx = 0;
 
 #define ALLOCATABLE_MEM_FOURMB_START 516 // 512-515 taken up by allocatable mem
 
-uint32_t fourmb_mem_allocate_idx = ALLOCATABLE_MEM_START;
+uint32_t fourmb_mem_allocate_idx = ALLOCATABLE_MEM_FOURMB_START;
 /**
  * @brief Turns on paging for the intel processor
  * 
@@ -149,11 +149,18 @@ void setup_paging() {
   fourmb_mem_table[66].refcount |= RESERVE_PAGE;
   fourmb_mem_table[67].refcount |= RESERVE_PAGE;
 
-  // actually assign the page table entries into page dir
+  // 0MB - 4MB is just page_table
   add_page_table(0, page_table, PRESENT_BIT | READ_WRITE_BIT);
+
+  // 4MB - 8MB is kernel code
   page_directory[1] = (FOURMB & FIRST_TEN_BITS_MASK);
   page_directory[1] |= (PRESENT_BIT | READ_WRITE_BIT) | PAGE_SIZE_BIT; 
 
+  // 8MB - 12MB is kernel stacks?
+  page_directory[2] = (FOURMB & FIRST_TEN_BITS_MASK);
+  page_directory[2] |= (PRESENT_BIT | READ_WRITE_BIT) | PAGE_SIZE_BIT;
+
+  // for signals asm page?
   add_page_table(ALLOCATABLE_MEM_START, allocatable_mem, PRESENT_BIT | READ_WRITE_BIT | USER_BIT);
   turn_on_paging();
 }

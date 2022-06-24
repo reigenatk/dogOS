@@ -6,13 +6,68 @@
 #include "task.h"
 #include "paging.h"
 #include "x86_desc.h"
+#include "signal.h"
 #include "terminal.h"
 #include "errno.h"
 
-// these are the actual system calls
-// since definition doubles as a declaration and a definition
-// we will just omit putting the signatures into the header files
-// when linker looks for this in interrupt_wrapper.S it will see these and be OK
+/**
+ * @brief This function programatically populates the jump table for system calls in the system_call_public.S file
+ * That way we have fine control over which system call maps to which syscall number. Otherwise we'd have to 
+ * arrange it in order in the assembly file which could get confusing
+ * @param syscall_no 
+ * @param handler 
+ * @return uint32_t 
+ */
+uint32_t register_syscall(int syscall_no, syscall_handler handler) {
+  if (syscall_no > NUM_SYSCALLS || syscall_no <= 0) {
+    return -1;
+  }
+
+  jump_table[syscall_no] = handler;
+  return 0;
+}
+
+/**
+ * @brief This function will just populate the jump table by calling register_syscall a ton of times
+ * 
+ */
+void register_all_syscalls() {
+  	// ece391_halt
+	syscall_register(1, sys_halt);
+	// ece391_execute
+	syscall_register(2, sys_execute);
+	// ece391_read
+	syscall_register(3, sys_read);
+	// ece391_write
+	syscall_register(4, sys_write);
+	// ece391_open
+	syscall_register(5, sys_open);
+	// ece391_close
+	syscall_register(6, sys_close);
+	// ece391_getargs
+	syscall_register(7, sys_getargs);
+	// ece391_vidmap
+	syscall_register(8, sys_vidmap);
+	// ece391_set_handler
+	syscall_register(9, sys_set_handler);
+	// ece391_sigreturn
+	syscall_register(10, sys_sigreturn);
+
+  	// Process
+	syscall_register(SYSCALL_FORK, sys_fork);
+	syscall_register(SYSCALL_EXIT, sys_exit);
+	syscall_register(SYSCALL_EXECVE, sys_execve);
+	syscall_register(SYSCALL_WAITPID, sys_waitpid);
+	syscall_register(SYSCALL_GETPID, sys_getpid);
+	syscall_register(SYSCALL_BRK, sys_brk);
+	syscall_register(SYSCALL_SBRK, sys_sbrk);
+
+	// Signals
+	syscall_register(SYSCALL_KILL, sys_kill);
+	syscall_register(SYSCALL_SIGACTION, sys_sigaction);
+	syscall_register(SYSCALL_SIGSUSPEND, sys_sigsuspend);
+	syscall_register(SYSCALL_SIGPROCMASK, sys_sigprocmask);
+}
 
 /*
 The halt system call terminates a process, returning the specified

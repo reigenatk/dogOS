@@ -9,6 +9,8 @@
 # define the actual syscall functions as extern. ,They are defined in system_calls.c
 .extern sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, ece391_sys_set_handler, ece391_sys_sigreturn
 
+.extern sys_fork, sys_exit, sys_execve, sys_waitpid, sys_getpid, sys_brk, sys_sbrk
+
 # this is a template for generic macros that will move the arguments of the syscall 
 # into the defined registers that the MP specifies:
 
@@ -20,7 +22,7 @@
 # when the call returns (not all do); a value of -1 indicates 
 # an error, while others indicate some form of success.
 #
-#define DO_CALL(name,number)   \
+#define DEFINE_SYSCALL(name,number)   \
 .data                         ;\
 .globl name                   ;\
 .text                 ;\
@@ -36,21 +38,29 @@ name:                 ;\
 
 
 # numbers defined in ece391sysnum.h
-DO_CALL(halt,SYS_HALT)
-DO_CALL(execute,SYS_EXECUTE)
-DO_CALL(read,SYS_READ)
-DO_CALL(write,SYS_WRITE)
-DO_CALL(open,SYS_OPEN)
-DO_CALL(close,SYS_CLOSE)
-DO_CALL(getargs,SYS_GETARGS)
-DO_CALL(vidmap,SYS_VIDMAP)
-DO_CALL(set_handler,SYS_SET_HANDLER)
-DO_CALL(sigreturn,SYS_SIGRETURN)
+DEFINE_SYSCALL(halt,SYS_HALT)
+DEFINE_SYSCALL(execute,SYS_EXECUTE)
+DEFINE_SYSCALL(read,SYS_READ)
+DEFINE_SYSCALL(write,SYS_WRITE)
+DEFINE_SYSCALL(open,SYS_OPEN)
+DEFINE_SYSCALL(close,SYS_CLOSE)
+DEFINE_SYSCALL(getargs,SYS_GETARGS)
+DEFINE_SYSCALL(vidmap,SYS_VIDMAP)
+DEFINE_SYSCALL(set_handler,SYS_SET_HANDLER)
+DEFINE_SYSCALL(sigreturn,SYS_SIGRETURN)
 
-DO_CALL(sigaction, SYSCALL_SIGACTION)
-DO_CALL(kill, SYSCALL_KILL)
-DO_CALL(sigsuspend, SYSCALL_SIGSUSPEND)
-DO_CALL(sigprocmask, SYSCALL_SIGPROCMASK)
+DEFINE_SYSCALL(sigaction, SYSCALL_SIGACTION)
+DEFINE_SYSCALL(kill, SYSCALL_KILL)
+DEFINE_SYSCALL(sigsuspend, SYSCALL_SIGSUSPEND)
+DEFINE_SYSCALL(sigprocmask, SYSCALL_SIGPROCMASK)
+
+DEFINE_SYSCALL(fork, SYSCALL_FORK)
+DEFINE_SYSCALL(exit, SYSCALL_EXIT)
+DEFINE_SYSCALL(execve, SYSCALL_EXECVE);
+DEFINE_SYSCALL(waitpid, SYSCALL_WAITPID);
+DEFINE_SYSCALL(getpid, SYSCALL_GETPID);
+DEFINE_SYSCALL(brk, SYSCALL_BRK);
+DEFINE_SYSCALL(sbrk, SYSCALL_SBRK);
 
 # wrap syscall handler too
 # "In particular, the call number is placed in EAX, the first argument in EBX, then
@@ -110,9 +120,13 @@ return:
 	sti
 	iret # return from system call handler
 
+.globl jump_table
+
 jump_table:
-	.long sys_halt, sys_execute, sys_read, sys_write, sys_open, sys_close, sys_getargs, sys_vidmap, ece391_sys_set_handler, ece391_sys_sigreturn
-	.long sys_sigaction, sys_kill, sys_sigsuspend, sys_sigprocmask
+	.rept NUM_SYSCALLS
+	.long 0
+	.endr
+
 # Refer to: https://wiki.osdev.org/Getting_to_Ring_3
 # or this:
 # Kernel code executes at privilege level 0, while user-level code must execute at privilege level 3. The x86 processor

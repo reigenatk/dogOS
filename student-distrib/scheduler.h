@@ -32,6 +32,11 @@ when the task is not the active one (see the previous section
 
 void init_PIT();
 void next_scheduled_task();
+
+/**
+ * @brief The interrupt handler which will call next_scheduled_task only if scheduling flag is set
+ * 
+ */
 void pit_interrupt_handler();
 
 // set this to 1 once we are ready to start scheduling

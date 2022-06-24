@@ -15,7 +15,8 @@
 #endif /* ECE391SYSNUM_H */
 
 // https://thevivekpandey.github.io/posts/2017-09-25-linux-system-calls.html
-// slightly out of order but again the numbers dont matter so much as how many we have
+// the numbers do NOT match up with the official documentation, but that's imposisble anyways since ECE391 syscalls 
+// take up 1-10, either way the numbers don't really matter since we can just register them in a different order
 #define SYSCALL_OPEN		16
 #define SYSCALL_CLOSE		17
 #define SYSCALL_READ		18
@@ -25,7 +26,7 @@
 #define SYSCALL_GETDENTS	22
 
 #define SYSCALL_FORK		23
-#define SYSCALL__EXIT		24
+#define SYSCALL_EXIT		24
 #define SYSCALL_EXECVE		25
 #define SYSCALL_SIGACTION	26
 #define SYSCALL_KILL		27
@@ -58,3 +59,5 @@
 #define SYSCALL_SETUID		52
 #define SYSCALL_GETGID		53
 #define SYSCALL_SETGID		54
+
+#define NUM_SYSCALLS        100

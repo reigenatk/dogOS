@@ -459,7 +459,7 @@ pit_handler_wrapper:
 	call scheduler_update_taskregs
 	addl $4, %esp
 
-	call next_scheduled_task	
+	call pit_interrupt_handler	
 	addl $4, %esp
 	popal
 	iret

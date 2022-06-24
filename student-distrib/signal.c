@@ -231,7 +231,7 @@ void signal_handler_stop(task *proc, int sig) {
 
 
 
-int32_t ece391_sys_set_handler(int32_t signum, void *handler_address)
+int32_t sys_set_handler(int32_t signum, void *handler_address)
 {
   // internally call sigaction which is more robust version of this
   // we only have 5 signals in ECE391 so check that first
@@ -253,7 +253,7 @@ int32_t ece391_sys_set_handler(int32_t signum, void *handler_address)
   return sys_sigaction(signum, (int) &s_act, 0);
 }
 
-int32_t ece391_sys_sigreturn(void)
+int32_t sys_sigreturn(void)
 {
   printf("hi");
   return 0x20;

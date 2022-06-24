@@ -56,21 +56,21 @@ void scheduler_change_task(task* from, task* to) {
   uint32_t next_task_pid = to->pid;
   map_process_mem(next_task_pid);
   
-  task *from_pcb = &tasks[from->pid];
-  // check for pending signals on the process we are switching from
-  if (from_pcb->pending_signals) {
+  task *to_pcb = &tasks[to->pid];
+  // check for pending signals on the process we are switching TO
+  if (to_pcb->pending_signals) {
     // mask out the blocked signals
-    sigset_t signals_pending = from_pcb->pending_signals & (~from_pcb->signal_mask);
+    sigset_t signals_pending = to_pcb->pending_signals & (~to_pcb->signal_mask);
     int i;
 
     // check ALL pending signals and run corresponding handlers
     for (i = 1; i < SIG_MAX; i++) {
       if (sigismember(&signals_pending, i)) {
         // mark this signal as ran
-        sigdelset(&from_pcb->pending_signals, i);
+        sigdelset(&to_pcb->pending_signals, i);
 
         // now run the handler. this will run either default handler or custom handler
-        signal_exec(from_pcb, i);
+        signal_exec(to_pcb, i);
 
         // now the scheduler will tick below, and start execution at newly modified registers from signal_exec, which will run the handler
         // or run a syscall to exit or something like that

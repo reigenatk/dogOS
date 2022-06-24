@@ -7,7 +7,10 @@
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
-#define MAX_TASKS 64
+
+// because there are max 256 spots for kernel stacks (4MB page / 16kb stack per task,
+// though we could change size of kernel stack if we wanted more tasks)
+#define MAX_TASKS 256
 
 
 /*
@@ -118,10 +121,6 @@ typedef struct task_t {
   uint32_t return_eip;
 
 
-  // uint32_t* page_table_address;
-  // // page tables and directories are of type uint32_t, so we need pointers to that
-  // uint32_t* page_directory_address;
-
   uint16_t uid; ///< User ID of the process
 	uint16_t gid; ///< Group ID of the process
 	
@@ -154,13 +153,27 @@ task* init_task(uint32_t pid);
 
 int32_t find_unused_fd();
 
-/*
-As in Linux, the tasks will share common mappings for kernel pages, in this case a single, global 4 MB page. Unlike
-Linux, we will provide you with set physical addresses for the images of the two tasks, and will stipulate that they
-require no more than 4 MB each, so you need only allocate a single page for each task’s user-level memory
 
-TLDR: each task gets 4 MB page of memory.
-*/
+// some syscalls
+
+/**
+ * @brief fork() creates a new process by duplicating the calling process.
+       The new process is referred to as the child process.  The calling
+       process is referred to as the parent process.
+ * 
+ * @return int32_t 
+ */
+int32_t sys_fork();
+
+/**
+ * @brief getppid() returns the process ID of the parent of the calling
+       process.  This will be either the ID of the process that created
+       this process using fork(), or, if that process has already
+       terminated, the ID of the process to which this process has been
+       reparented
+ * 
+ */
+int32_t sys_getpid();
 
 /**
  * @brief A way to add something to the user stack of a process
