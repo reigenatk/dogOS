@@ -55,10 +55,16 @@ typedef struct fourmb_page_descriptor{
 	struct fourkb_page_descriptor* 	pages; ///<  The pages
 } fourmb_page_descriptor;
 
-// maps a virtual to physical by tracing the address translation that the virtual
-// address would take, and creating corresponding page table + page directory entries 
-// to get to that physical address.
-uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags);
+/**
+ * @brief Equivalent to page_tab_add_entry in saenaios. Basically just adds a page table entry
+ *  given virt, phys + flags
+ * @param physical 
+ * @param flags 
+ * @return int32_t 
+ */
+int32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags);
+
+int page_dir_add_4MB_entry(uint32_t virtual_addr, uint32_t real_addr, int flags);
 
 /**
  * @brief If value is null, then it will populate phys_addr with phys mem to use
@@ -68,13 +74,53 @@ uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags);
  * @param phys_addr 
  * @return uint32_t 
  */
-uint32_t alloc_4kb_mem(uint32_t* phys_addr);
+int32_t alloc_4kb_mem(uint32_t* phys_addr);
 
 /**
  * @brief 4MB page version of above
  * 
  */
-uint32_t alloc_4mb_mem(uint32_t* phys_addr);
+int32_t alloc_4mb_mem(uint32_t* phys_addr);
+
+/**
+ *
+ *	exposed function to free a 4MB page
+ *
+ *	@param physical_addr: value of the physical address to free
+ *
+ *	@return 0 for success, negative value for error
+ *
+ *	@note actually decrease the use count of that memory
+ */
+int page_alloc_free_4MB(int physical_addr);
+
+/**
+ *
+ *	exposed function to free a 4KB page
+ *
+ *	@param physical_addr: value of the physical address to free
+ *
+ *	@return 0 for success, negative value for error
+ *
+ *	@note actually decrease the use count of that memory
+ */
+int page_alloc_free_4KB(int physical_addr);
+
+/**
+ * @brief changes present bit on corresponding page directory to 0
+ * 
+ * @param virt 
+ * @return int32_t 
+ */
+int32_t page_dir_delete_entry(uint32_t virt);
+
+/**
+ * @brief changes present bit on corresponding page table to 0
+ * 
+ * @param virt 
+ * @return int32_t 
+ */
+int32_t page_tab_delete_entry(uint32_t virt);
 
 // align page tables on 4KB boundaries
 extern uint32_t page_directory[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));

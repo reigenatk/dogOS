@@ -67,4 +67,18 @@ void scheduler_update_taskregs(struct s_regs *regs);
  */
 void scheduler_iret(struct s_regs* reg);
 
+/**
+ * @brief Given a task object, setup the pages
+ * 
+ * @param proc 
+ */
+void scheduler_page_clear(task *proc);
+
+/**
+ * @brief Given a task object, tear down the pages (by changing present bits)
+ * 
+ * @param proc 
+ */
+void scheduler_page_setup(task *proc);
+
 #endif

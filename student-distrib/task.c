@@ -4,6 +4,11 @@
 #include "RTC.h"
 #include "keyboard.h"
 #include "terminal.h"
+#include "system_calls.h"
+#include "signal.h"
+#include "scheduler.h"
+#include "wait.h"
+#include "mm/kmalloc.h"
 #include "errno.h"
 
 // All of our running tasks! Initialized to zero since its global
@@ -17,6 +22,7 @@ typedef struct s_task_ks {
 	uint8_t stack[16380]; // Empty space to fill 16kb
 } __attribute__((__packed__)) task_ks_t;
 
+// the default location for kernel stack of each program
 task_ks_t *kstack = (task_ks_t *)0x800000;
 
 void init_tasks() {
@@ -219,8 +225,15 @@ int32_t sys_fork() {
   child_task_ptr->pid = child_pid;
   child_task_ptr->parent_pid = cur_pid;
 
+  // allocate a new region of memory to store the same pathname? Not sure why this kmalloc is needed but OK
+  child_task_ptr->wd = kmalloc(1024);
+  memcpy(child_task_ptr->wd, cur_task_ptr->wd);
+
+
   // kernel stack initialization
   // loop thru all the available kernel stacks and find the first one not being used
+  // its 256 btw because its 16kb per kernel stack, and we have a 4MB page to work with. So in a way this is a hard limit on the 
+  // number of processes but I'm hesitant to put NUM_TASKS since that could change.
   int i;
   for (i = 0; i < 256; i++) {
     if (kstack[i].pid < 0) {
@@ -235,9 +248,158 @@ int32_t sys_fork() {
     return -ENOMEM;
   }
 
+  // make corresponding pages for all the memory in the old process
+  child_task_ptr->pages = kmalloc(sizeof(task_ptentry_t) * cur_task_ptr->page_limit);
+  
+  if (!child_task_ptr->pages) {
+    return -ENOMEM;
+  }
 
+  // copy over contents of all the pages
+  memcpy(child_task_ptr->pages, cur_task_ptr->pages, sizeof(task_ptentry_t) * cur_task_ptr->page_limit);
+
+  // remap all the pages to their appropriate addresses
+  for (int i = 0; i < cur_task_ptr->page_limit; i++) {
+    // first check if page is there
+    if (!(child_task_ptr->pages[i].pt_flags & PRESENT_BIT)) {
+      break;
+    }
+
+    // mark the page as copy on write if page is rdwr
+    if (child_task_ptr->pages[i].pt_flags & READ_WRITE_BIT) {
+      child_task_ptr->pages[i].priv_flags |= COPY_ON_WRITE;
+      child_task_ptr->pages[i].priv_flags &= ~READ_WRITE_BIT;
+      cur_task_ptr->pages[i].priv_flags |= COPY_ON_WRITE;
+      cur_task_ptr->pages[i].priv_flags &= ~READ_WRITE_BIT;
+    }
+    else {
+      // map the page
+      if (child_task_ptr->pages[i].pt_flags & PAGE_SIZE_BIT) {
+        // 4MB
+        page_dir_delete_entry(child_task_ptr->pages[i].vaddr);
+        page_dir_add_4MB_entry(child_task_ptr->pages[i].vaddr, child_task_ptr->pages[i].paddr, child_task_ptr->pages[i].pt_flags);
+      }
+      else {
+        // 4kB
+        page_tab_delete_entry(child_task_ptr->pages[i].vaddr);
+        map_virt_to_phys(child_task_ptr->pages[i].vaddr, child_task_ptr->pages[i].paddr, child_task_ptr->pages[i].pt_flags);
+      }
+    }
+  }
+
+  // Return 0 to newly created process
+  child_task_ptr->regs.eax = 0;
+
+  // done with page stuff, flush tlb
+  flush_tlb();
+  return child_pid;
 }
 
 int32_t sys_getpid() {
   return get_task()->pid;
+}
+
+/**
+ * @brief Helper function used by exit to aid in terminating a process
+ * We need to dealloc pages, dynamic memory (heap), kernel stack, and change program status
+ * @param t 
+ */
+void task_release(task* t) {
+  int i;
+
+  // program status change
+  t->status = TASK_ST_DEAD;
+
+  // dealloc pages in use by this program
+  for (i = 0; i < t->page_limit; i++) {
+    if (!(t->pages[i].pt_flags & PRESENT_BIT)) {
+      // if page not present then end of list
+      break;
+    }
+
+    // unalloc pages
+    if (t->pages[i].pt_flags & PAGE_SIZE_BIT) {
+			// 4MB page
+			page_alloc_free_4MB(t->pages[i].paddr);
+		} else {
+			// 4KB page
+			page_alloc_free_4KB(t->pages[i].paddr);
+		}
+    
+    // free dynamic memory
+    if (t->pages) {
+      kfree(t->pages);
+    }
+    if (t->wd) {
+      kfree(t->wd);
+    }
+
+    // free kernel stack by setting PID of the kernel stack descriptor to -1 (indicating that its free)
+    ((struct s_task_ks *)(t->k_esp))->pid = -1;
+  }
+}
+
+int32_t sys_exit(int32_t status) {
+  int32_t cur_pid = sys_getpid();
+  int32_t parent_pid = get_task()->parent_pid;
+  task* cur_task_ptr = tasks + cur_pid;
+  task* parent_task_ptr = tasks + parent_pid;
+
+  // close all file descriptors
+  int i;
+  for (i = 0; i < MAX_OPEN_FILES; i++) {
+    sys_close(i);
+  }
+
+  // run new shell process if no shell running in terminal
+  // TODO: use tty here to check if shell is running or not
+
+  // set return value to error code
+  cur_task_ptr->regs.eax = status;
+
+  // now we send either 1. SIGCHLD to parent and make the child process a zombie
+  // or 2. if the handler for SIGCHLD has SA_NOCLDWAIT, then we close the current process and send a SIGCONT to parent
+
+  if (parent_task_ptr->status == TASK_ST_SLEEP || parent_task_ptr->status == TASK_ST_RUNNING) {
+    if (parent_task_ptr->sigacts[SIGCHLD].flags & SA_NOCLDWAIT) {
+
+      scheduler_page_clear(cur_task_ptr);
+      task_release(cur_task_ptr);
+      sys_kill(parent_pid, SIGCONT);
+    }
+    else {
+      // set cur task to zombie state
+      cur_task_ptr->status = TASK_ST_ZOMBIE;
+
+      // set the exit status for when we later call wait()
+      // here we have two cases for which exit status we will set depending on whether or not the status indicates that cur process was terminated by signal
+      if (WIFSIGNALED(status)) {
+        cur_task_ptr->exit_status = status;
+      }
+      else {
+        cur_task_ptr->exit_status = WEXITSTATUS(status) | WIFEXITED(-1);
+      }
+      sys_kill(parent_pid, SIGCHLD); // by default ignored
+    }
+  }
+  else {
+    // if no parent task or if parent task is dead or something then just forget about sending signal
+    // and just do the typical stuff
+    scheduler_page_clear(cur_task_ptr);
+    task_release(cur_task_ptr);
+  }
+
+  // so at this point the task that called exit should have its status set to DEAD, therefore scheduler will never run it again
+  // also parent task has been properly notified via and we are ready to call wait() to get the exit status of the dead process.
+  next_scheduled_task();
+
+  // should never hit
+  return 0;
+}
+
+int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
+  int i;
+  if (!wstatus) {
+    return -EFAULT;
+  }
 }

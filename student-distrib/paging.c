@@ -3,6 +3,8 @@
 #include "task.h"
 #include "errno.h"
 
+// -------------------------------- BEGIN IMPORTANT STUFF --------------------------------------------------------------- //
+
 uint32_t page_directory[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 
 uint32_t page_table[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
@@ -19,19 +21,25 @@ uint32_t allocatable_mem[NUM_PAGE_ENTRIES] __attribute__((aligned(FOURKB)));
 // which is 4*4MB which is 16MB of memory, starting at physical addr 0x10000000
 fourkb_page_descriptor allocatable_mem_table[4][1024];
 
-#define NUM_FOURMB_PAGES_ALLOCATABLE 530
+// so the range is from really 64 -> 100 *4MB, so 256 to 400MB. First 4 pages are for 4kB, other 32 are for 4MB.
+#define ALLOCATABLE_MEM_END_RANGE 100
 
 // a description of the free fourmb pages to allocate (here I did a bit more than 512 since 2GB is 4MB * 512 = 2048MB)
-fourmb_page_descriptor fourmb_mem_table[NUM_FOURMB_PAGES_ALLOCATABLE];
+fourmb_page_descriptor fourmb_mem_table[ALLOCATABLE_MEM_END_RANGE];
 
-// physical. we will start allocing mem here
+// physical. we will start allocing mem here @ 2^28 or 256MB
+// first we have four 4MB pages which each have 1024 4KB pages to alloc out, which is described by the "allocatable_mem_table" above
+// then immediately after we have 100-68 = 32 4MB pages to alloc out which is described by fourmb_mem_table
 #define ALLOCATABLE_MEM_START 0x10000000
 
 uint32_t mem_allocate_idx = 0;
 
-#define ALLOCATABLE_MEM_FOURMB_START 516 // 512-515 taken up by allocatable mem
+#define ALLOCATABLE_MEM_FOURMB_START 68 // 64-67 taken up by allocatable mem. The way we get 64btw is 4mb = 2^22 and allocatable starts at 2^28 so its 2^6 difference
 
 uint32_t fourmb_mem_allocate_idx = ALLOCATABLE_MEM_FOURMB_START;
+
+// -------------------------------- END IMPORTANT STUFF -------------------------------------------------------------- //
+
 /**
  * @brief Turns on paging for the intel processor
  * 
@@ -70,7 +78,7 @@ void turn_on_paging() {
   );
 }
 
-uint32_t add_page_table(uint32_t virtual, uint32_t page_table_addr, uint32_t flags) {
+int32_t add_page_table(uint32_t virtual, uint32_t page_table_addr, uint32_t flags) {
   uint32_t page_dir_idx = GET_PAGEDIR_IDX(virtual);
   if (page_directory[page_dir_idx] & PRESENT_BIT || page_directory[page_dir_idx] & PAGE_SIZE_BIT) {
     return -EINVAL;
@@ -167,7 +175,7 @@ void setup_paging() {
 
 
 
-uint32_t increase_4kb_refcount(uint32_t phys_addr) {
+int32_t increase_4kb_refcount(uint32_t phys_addr) {
   // check to see if allocated first
   if (allocatable_mem_table[GET_PAGEDIR_IDX(phys_addr)][GET_PAGETAB_IDX(phys_addr)].refcount <= 0) {
     return -EINVAL;
@@ -176,7 +184,7 @@ uint32_t increase_4kb_refcount(uint32_t phys_addr) {
   return 0;
 }
 
-uint32_t increase_4mb_refcount(uint32_t phys_addr) {
+int32_t increase_4mb_refcount(uint32_t phys_addr) {
   // check to see if allocated first
   if (fourmb_mem_table[GET_PAGEDIR_IDX(phys_addr)].refcount <= 0) {
     return -EINVAL;
@@ -185,20 +193,48 @@ uint32_t increase_4mb_refcount(uint32_t phys_addr) {
   return 0;
 }
 
+int page_alloc_free_4MB(int physical_addr){
+	// never free a kernel page 
+	if (physical_addr <= FOURMB){
+		return -EINVAL;
+	}
+	// check if the physical page is really in use
+	if (fourmb_mem_table[GET_PAGEDIR_INDEX(physical_addr)].refcount<=0){
+		return -EINVAL;
+	}
+	// then decrease the use count
+	fourmb_mem_table[GET_PAGEDIR_INDEX(physical_addr)].refcount--;
+	return 0;
+}
+
+int page_alloc_free_4KB(int physical_addr){
+	// never free a kernel page or a manyoushu page
+	if (physical_addr <= ALLOCATABLE_MEM_START || physical_addr > ALLOCATABLE_MEM_END_RANGE*FOURMB){
+		return -EINVAL;
+	}
+	// check if the physical page is really in use
+	if (allocatable_mem_table[GET_PAGEDIR_INDEX(physical_addr) - 64][GET_PAGETAB_IDX(physical_addr)].refcount<=0){
+		return -EINVAL;
+	}
+	// then decrease the use count
+	allocatable_mem_table[GET_PAGEDIR_INDEX(physical_addr) - 64][GET_PAGETAB_IDX(physical_addr)].refcount--;
+	return 0;
+}
+
 /**
  * @brief 4MB version of alloc
  * 
  * @return uint32_t 
  */
-uint32_t alloc_empty_4mb_mem() {
+int32_t alloc_empty_4mb_mem() {
   int count = 0;
   while (fourmb_mem_table[fourmb_mem_allocate_idx].refcount > 0) {
     count++;
     fourmb_mem_allocate_idx++;
-    if (fourmb_mem_allocate_idx == NUM_FOURMB_PAGES_ALLOCATABLE) {
+    if (fourmb_mem_allocate_idx == ALLOCATABLE_MEM_END_RANGE) {
       fourmb_mem_allocate_idx = ALLOCATABLE_MEM_FOURMB_START; // wrap around and check lower addresses again
     }
-    if (count == NUM_FOURMB_PAGES_ALLOCATABLE - ALLOCATABLE_MEM_START) {
+    if (count == ALLOCATABLE_MEM_END_RANGE - ALLOCATABLE_MEM_START) {
       // if we are still here, means all the physical pages were allocated. Shucks!
       return -ENOMEM;
     }
@@ -209,7 +245,7 @@ uint32_t alloc_empty_4mb_mem() {
 }
 
 
-uint32_t alloc_4mb_mem(uint32_t* phys_addr) {
+int32_t alloc_4mb_mem(uint32_t* phys_addr) {
   if (!phys_addr) {
     return -EINVAL;
   }
@@ -236,7 +272,7 @@ uint32_t alloc_4mb_mem(uint32_t* phys_addr) {
  * it returns the address of that physical page.
  * @return uint32_t 
  */
-uint32_t alloc_empty_4kb_mem() {
+int32_t alloc_empty_4kb_mem() {
   int count = 0;
   while (allocatable_mem_table[mem_allocate_idx / 1024][mem_allocate_idx % 1024].refcount > 0) {
     count++;
@@ -254,7 +290,7 @@ uint32_t alloc_empty_4kb_mem() {
   return ALLOCATABLE_MEM_START + mem_allocate_idx * (FOURKB);
 }
 
-uint32_t alloc_4kb_mem(uint32_t* phys_addr) {
+int32_t alloc_4kb_mem(uint32_t* phys_addr) {
   if (!phys_addr) {
     return -EINVAL;
   }
@@ -285,6 +321,41 @@ void map_process_mem(uint32_t pid) {
   flush_tlb();
 }
 
+int page_dir_add_4MB_entry(uint32_t virtual_addr, uint32_t real_addr, int flags){
+	// check inconsistent flag
+	if (!(flags & PAGE_SIZE_BIT)){
+		return -EINVAL;
+	}
+	// auto fit to nearest 4MB
+	int page_dir_index;
+	page_dir_index = GET_PAGEDIR_INDEX(virtual_addr);
+
+	// if this dir entry already exists
+	if (page_directory[page_dir_index] & (PRESENT_BIT)){
+		return -EEXIST;
+	}
+
+	virtual_addr = page_dir_index * FOURMB;
+	real_addr = (real_addr / FOURMB) * FOURMB;
+
+	flags |= PRESENT_BIT; // sanity force present flags
+
+	// if want to map to a kernel address, hmmmmmm deny it because that would be bad and break everything
+	if (fourmb_mem_table[GET_MEM_MAP_INDEX(real_addr)].flags & (KERNEL_PAGE)){
+		return -EACCES;
+	}
+
+	// if want to map to a physical memory that hasn't been allocated
+	if (fourmb_mem_table[GET_MEM_MAP_INDEX(real_addr)].refcount <= 0){
+		return -EINVAL;
+	}
+
+	// add the entry in page directory
+	page_directory[page_dir_index] = (real_addr) | flags;
+
+	return 0;
+}
+
 /*
 Page/Page Table base address, bits 12 through 32
 (Page-table entries for 4-KByte pages.) Specifies the physical address of the
@@ -292,7 +363,7 @@ first byte of a 4-KByte page. The bits in this field are interpreted as the
 20 most significant bits of the physical address, which forces pages to be aligned on
 4-KByte boundaries.
 */
-uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
+int32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
   // first 10 bits are offset into page directory, next 10 is offset into table, final is offset into page
   uint32_t offset_into_pd = GET_PAGEDIR_IDX(virtual);
   uint32_t offset_into_pt = GET_PAGETAB_IDX(virtual);
@@ -300,6 +371,11 @@ uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
   // check if page directory entry present
   if (!(page_directory[offset_into_pd] & PRESENT_BIT)) {
     return -EINVAL;
+  }
+
+  if (flags & PAGE_SIZE_BIT) {
+    // its a 4MB page
+    
   }
 
   uint32_t* page_table = (uint32_t*) (page_directory[offset_into_pd] & FIRST_TWENTY_BITS);
@@ -322,4 +398,35 @@ uint32_t map_virt_to_phys(uint32_t virtual, uint32_t physical, uint32_t flags) {
   // ok its fine, let's do the mapping
   page_table[offset_into_pt] = (physical & FIRST_TWENTY_BITS) | flags;
   return 0;
+}
+
+int32_t page_dir_delete_entry(uint32_t virt) {
+  uint32_t offset_into_pd = GET_PAGEDIR_IDX(virt);
+  if (page_directory[offset_into_pd] & PRESENT_BIT) {
+    page_directory[offset_into_pd] &= ~PRESENT_BIT;
+    return 0;
+  }
+  else {
+    // not present
+    return -EINVAL;
+  }
+}
+
+int32_t page_tab_delete_entry(uint32_t virt) {
+  uint32_t offset_into_pd = GET_PAGEDIR_IDX(virt);
+  uint32_t offset_into_pt = GET_PAGETAB_IDX(virt);
+  if (page_directory[offset_into_pd] & PRESENT_BIT) {
+    uint32_t* page_table = (uint32_t*) (page_directory[offset_into_pd] & FIRST_TWENTY_BITS);
+    // check if page table entry even exists or is already deleted
+    if (!page_table || page_table[offset_into_pt] & PRESENT_BIT == 0) {
+      return -EEXIST;
+    }
+    else {
+      page_table[offset_into_pt] &= ~PRESENT_BIT;
+    }
+  }
+  else {
+    // not present
+    return -EINVAL;
+  }
 }

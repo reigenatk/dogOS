@@ -52,7 +52,10 @@ int32_t sigsuspend(const sigset_t *mask);
 int32_t sigprocmask(int how, int setp, int oldsetp);
 
 // tasks
+int32_t fork();
 
+// expose some of these syscalls publically so we can use them in the kernel
+int32_t sys_close(int32_t fd);
 
 // jump table
 typedef int32_t (*syscall_handler)(int, int, int);

@@ -23,6 +23,7 @@
     "signal.h": "c",
     "signal_user.h": "c",
     "debug.h": "c",
-    "errno.h": "c"
+    "errno.h": "c",
+    "kmalloc.h": "c"
   }
 }

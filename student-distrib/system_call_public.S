@@ -21,7 +21,8 @@
 # information to the user programs. The return value is placed in EAX
 # when the call returns (not all do); a value of -1 indicates 
 # an error, while others indicate some form of success.
-#
+
+
 #define DEFINE_SYSCALL(name,number)   \
 .data                         ;\
 .globl name                   ;\

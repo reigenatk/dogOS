@@ -80,7 +80,19 @@ typedef struct file_descriptor {
 #define TASK_ST_ZOMBIE		3	///< Process is awaiting parent `wait()`
 #define TASK_ST_DEAD		4	///< Process is dead
 
+#define COPY_ON_WRITE 1 /// for priv_flags field, mark the page of a process as copy on write
+
 #define SIG_MAX 32
+
+/**
+ *	A mapped memory page in a process's mapped page table
+ */
+typedef struct s_task_ptentry {
+	uint32_t vaddr; ///< Virtual address visible to the process
+	uint32_t paddr; ///< Physical address to write into the page table
+	uint16_t pt_flags; ///< Flags passed to `page_dir_add_*_entry`
+	uint16_t priv_flags; ///< Private flags
+} task_ptentry_t;
 
 // this is our pcb (Process Control Block) struct with data like all file descriptors,
 // the name of the task, the arguments that were passed in (which is limited by 
@@ -112,6 +124,10 @@ typedef struct task_t {
   // to the dummy one we made in the scheduler
   struct task *parent_task;
 
+  // mapped pages of task
+  task_ptentry_t *pages;	///< Mapped pages
+	int	page_limit;			///< Size of `pages`
+
   // for when we call halt on this process (i.e end it), 
   // so we can return nicely to kernelspace
   // these are the values of esp, ebp from the sys_execute call that spawned 
@@ -119,6 +135,8 @@ typedef struct task_t {
   uint32_t return_esp;
   uint32_t return_ebp;
   uint32_t return_eip;
+
+
 
 
   uint16_t uid; ///< User ID of the process
@@ -160,8 +178,8 @@ int32_t find_unused_fd();
  * @brief fork() creates a new process by duplicating the calling process.
        The new process is referred to as the child process.  The calling
        process is referred to as the parent process.
- * 
- * @return int32_t 
+ * https://man7.org/linux/man-pages/man2/fork.2.html
+ * @return int32_t PID of the newly made child task
  */
 int32_t sys_fork();
 
@@ -174,6 +192,34 @@ int32_t sys_fork();
  * 
  */
 int32_t sys_getpid();
+
+/**
+ * @brief any open
+       file descriptors belonging to the process are closed.  Any
+       children of the process are inherited by init(1) (or by the
+       nearest "subreaper" process as defined through the use of the
+       prctl(2) PR_SET_CHILD_SUBREAPER operation).  The process's parent
+       is sent a SIGCHLD signal.
+ *  Same thing as "halt" from ece391 
+ *  https://man7.org/linux/man-pages/man2/exit.2.html
+ * @return no return value (shouldnt be hit)
+ */
+int32_t sys_exit(int32_t error_code);
+
+
+/**
+ * @brief The waitpid() system call suspends execution of the calling
+       thread until a child specified by pid argument has changed state.
+       By default, waitpid() waits only for terminated children, but
+       this behavior is modifiable via the options argument, as
+       described below.
+ * https://man7.org/linux/man-pages/man2/waitpid.2.html
+ * @param pid The pid to wait on
+ * @param wstatus A pointer to an int- stores a status code into this pointer indicating some info about how the process terminated
+ * @param options 
+ * @return int32_t 
+ */
+int32_t sys_waitpid(pid_t pid, int *wstatus, int options);
 
 /**
  * @brief A way to add something to the user stack of a process

@@ -131,7 +131,7 @@ int32_t sys_kill(pid_t pid, int sig) {
   }
   // Send the signal to the process
   // which is same as just adding the signal to the process' "signals" mask (pending signals)
-  sigaddset(&tasks[pid].signals, sig);
+  sigaddset(&tasks[pid].pending_signals, sig);
 }
 
 /**
@@ -141,8 +141,27 @@ int32_t sys_kill(pid_t pid, int sig) {
  * @param sig 
  */
 void setup_frame(task* proc, int sig) {
-  // eip
-  push_onto_task_stack(&proc->regs.esp, proc->regs.eip);
+
+  // check for SA_RESTART flag. Basic jist is that if this flag is toggled on the signal action struct, 
+  // the system call will be restarted if interrupted by signal handler 
+  // https://man7.org/linux/man-pages/man2/waitpid.2.html
+
+  // To restart the system call, we will push stack frame for signal_user_ret
+  sigaction_t *sa;
+  sa = proc->sigacts + sig;
+  if (sa->flags & SA_RESTART) {
+    // Restart INT 0x80
+		// TODO validity check
+		if (*(uint8_t *)(proc->regs.eip - 2) == 0xcd) { // OPCode for INT: CD
+			task_user_pushl(&(proc->regs.esp), proc->regs.eip - 2);
+		} else {
+			task_user_pushl(&(proc->regs.esp), proc->regs.eip);
+		}
+  }
+  else {
+    // eip
+    push_onto_task_stack(&proc->regs.esp, proc->regs.eip);
+  }
   // hw context (push first 9, aka magic + 8 General purpose registers)
   push_buf_onto_task_stack(&proc->regs.esp, (uint8_t *)&proc->regs, 9 * sizeof(uint32_t));
   push_onto_task_stack(&proc->regs.esp, proc->regs.eflags);
@@ -219,7 +238,7 @@ void signal_handler_terminate(task *proc, int sig) {
   // we do this by directly changing the registers in the task state
 
   // this calls exit syscall with return code -200 (terminated due to signal)
-  proc->regs.eax = SYSCALL__EXIT;
+  proc->regs.eax = SYSCALL_EXIT;
   proc->regs.ebx = sig | WIFSIGNALED(-1); // return code?
 	proc->regs.eip = (uint32_t) signal_systemcall_user_addr;
 }
@@ -231,7 +250,7 @@ void signal_handler_stop(task *proc, int sig) {
 
 
 
-int32_t sys_set_handler(int32_t signum, void *handler_address)
+int32_t ece391_sys_set_handler(int32_t signum, void *handler_address)
 {
   // internally call sigaction which is more robust version of this
   // we only have 5 signals in ECE391 so check that first
@@ -253,7 +272,7 @@ int32_t sys_set_handler(int32_t signum, void *handler_address)
   return sys_sigaction(signum, (int) &s_act, 0);
 }
 
-int32_t sys_sigreturn(void)
+int32_t ece391_sys_sigreturn(void)
 {
   printf("hi");
   return 0x20;

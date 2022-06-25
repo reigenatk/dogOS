@@ -4,6 +4,9 @@
 #include "../errno.h"
 
 static struct memory_list mem_info[SLAB_NUM];
+
+// two linked lists of free and allocated memory chunks
+// which are really just at any given point, pointers to the above array mem_info
 static struct memory_list *free_list;
 static struct memory_list *alloc_list;
 
@@ -43,10 +46,14 @@ void kmalloc_init() {
     ((malloc_info_t*) start_addr)->size = SLAB_NUM;
 
     // initialize the starting two lists
+    // GIVE THE free list all the slabs at the beginning (because nothing is allocated) and 
     free_list = &(mem_info[0]);
 	free_list->status = 1;
 	free_list->size = SLAB_NUM;
 	free_list->prev = NULL;
+
+    // important note, the malloc info struct is always placed right at the beginning of the allocated memory chunk.
+    // this is consistent with the heap chals I did a while back from sigpwny! Obviously fields aren't exactly the same but anyways...
 	free_list->info = ((malloc_info_t*)start_addr);
 	((malloc_info_t*)start_addr)->link = free_list;
 	free_list->next = NULL;
@@ -75,6 +82,7 @@ void* kmalloc(size_t size) {
     // find the first memory list (inside the free linked list) with enough slabs (temp)
     memory_list_t* temp = free_list;
     
+    // find a memory chunk, temp, which has equal or greater amount of contiguous slabs that we have requested
     while (temp != NULL) {
         if (temp->size >= min_slabs) {
             break;
@@ -95,25 +103,37 @@ void* kmalloc(size_t size) {
 		if (temp->next != NULL)
 			temp->next->prev = temp->prev;
 
-        temp2 = alloc_list;
+        if (alloc_list == NULL) {
+            // if allocating all 12MB immediately lol (rare case, use has to request exactly 12MB)
+            // then the entire chunk goes into alloc and free becomes empty
+            alloc_list = temp;
+            free_list = NULL;
+        }
+        else {
+            temp2 = alloc_list;
 
-        // insert this list into allocated list
-        while (temp2->next) {
-            temp2 = temp2->next;
+            // find end of the allocated list
+            while (temp2->next) {
+                temp2 = temp2->next;
+            }
+
+            // insert new list at end of the 'allocated' LL
+            temp2->next = temp;
+            temp->prev = temp2;
+            temp->next = 0;
+            temp->info->status = 1; // mark info struct as allocated  
+            // no need to mark temp status since its should already be 1 from before (either via initialization or a split)
         }
 
-        // insert new list at end of the 'allocated' LL
-        temp2->next = temp;
-        temp->prev = temp2;
-        temp->next = 0;
-        temp->info->status = 1; // mark info struct as allocated  
     }
     else {
         // we have to split this group of slabs in two (one is free, one is alloc)
+        // say that temp has y slabs and we need x where y > x, then its broken up into 2 chunks: x alloc'd slabs, and (y-x) free slabs.
+        // temp is the alloc'd one (but starts off as empty) and temp2 is the free one
         ret = temp->info->start_addr;
 
         // prepare info entry for new slab (this is the free one)
-        memory_list_t* new_entry_info = (memory_list_t*)(ret + min_slabs * SLAB_SIZE);
+        malloc_info_t* new_entry_info = (malloc_info_t*)(ret + min_slabs * SLAB_SIZE);
         
         // find somewhere to put our allocated stuff
         int i;
@@ -121,7 +141,7 @@ void* kmalloc(size_t size) {
             if (mem_info[i].status == 0) {
                 // temp2 is the free one now
                 temp2 = &mem_info[i];
-                temp2->status = 1;
+                temp2->status = 1; // mark the chunk as used
                 break;
             }
         }
@@ -129,19 +149,93 @@ void* kmalloc(size_t size) {
             errno = -ENOMEM;
             return 0;
         }
-
+        // set the properties on the free block now
         temp2->size = temp->size - min_slabs;
+        
+        // set the info on that block as well
+        new_entry_info->link = temp2;
+        new_entry_info->size = temp2->size;
+        new_entry_info->start_addr = temp->info->start_addr + SLAB_SIZE * min_slabs;
+        new_entry_info->status = 0; // free
+        temp2->info = new_entry_info;
+
+        // insert temp2 into free LL (and remove temp from it)
+        if (temp->prev) {
+            temp->prev->next = temp2;
+        }
+        if (temp->next) {
+            temp->next->prev = temp2;
+        }
+
+        // adjust temp
+        temp->size = min_slabs;
+        temp->info->size = min_slabs;
+        temp->info->status = 1; // allocated
+
+        // put temp into alloc list
+        temp2 = alloc_list;
+
+        if (temp2 == NULL) {
+            // that is, the first one to be in the alloc list
+            alloc_list = temp;
+            temp->prev = NULL;
+            temp->next = NULL;
+        }
+        else {
+            // insert this list into allocated list
+            while (temp2->next) {
+                temp2 = temp2->next;
+            }
+            temp2->next = temp;
+            temp->prev = temp2;
+            temp->next = NULL;
+        }
+
     }
     return (void*)(ret + INFO_SIZE);
 }
 
-void kfree(void* mem);
+int kfree(void* mem) {
+    malloc_info_t *info_about_mem_chunk = (malloc_info_t *)((uint32_t) mem - INFO_SIZE);
+    if (info_about_mem_chunk->status != 1) {
+        // then its not valid
+        return -EINVAL;
+    }
 
-void* malloc(size_t size);
+    // the list entity
+    memory_list_t *memory_chunk = info_about_mem_chunk->link;
 
-void* calloc(size_t count, size_t size);
+    // use this to loop thru free list
+    memory_list_t *temp = free_list;
 
-void* free(void* mem);
+    // OK idk why they did this, I disagree with their implementation. Should be temp->size * SLAB_SIZE no? Cuz you wanna check if 
+    // current slab is right before the one we're about to free. And doing offset makes no sense since that's the size of the freed chunk?
+    int offset = info_about_mem_chunk->size * SLAB_SIZE;
+    if (temp) {
+        // if the freelist isnt empty, first find the chunk that is right before it
+        while (temp->next) {
+            if (temp->info->start_addr + temp->size * SLAB_SIZE == info_about_mem_chunk->start_addr) {
+                break;
+            }
+            temp = temp->next;
+        }
+
+        // ok now here they break it into cases. Again idk why we can't jus do this: add the chunk we're freeing's size to the previous one
+        // and then set it to zero. done?
+        temp->size += info_about_mem_chunk->size * SLAB_SIZE;
+        temp->info->size = temp->size;
+        memset(memory_chunk, 0, info_about_mem_chunk->size * SLAB_SIZE);
+        
+    }
+    else {
+        // free list is empty
+        free_list = temp;
+        temp->prev = NULL;
+        temp->next = NULL;
+        temp->info->status = 0;
+    }
+    return 0;
+}
 
 int get_free_page() {
 

@@ -184,3 +184,46 @@ void next_scheduled_task_old() {
   
 }
 
+void scheduler_page_clear(task *proc){
+	task_ptentry_t* pages;
+	int i, ret;
+	pages = proc->pages;
+	for (i=0; i<proc->page_limit; ++i){
+		// check whether the page is present
+		if (pages[i].pt_flags & PRESENT_BIT) {
+			// then delete this entry
+			if (pages[i].pt_flags & PAGE_SIZE_BIT){
+				ret = page_dir_delete_entry(pages[i].vaddr);
+			}else{
+				ret = page_tab_delete_entry(pages[i].vaddr);
+			}
+			if (ret != 0) {
+				printf("Scheduler page clear failed %d\n", ret);
+			}
+		}
+		// else do nothing
+	}
+  flush_tlb();
+}
+
+void scheduler_page_setup(task *proc){
+	task_ptentry_t* pages;
+	int i, ret;
+	pages = proc->pages;
+	for (i=0; i<proc->page_limit; ++i){
+		// check whether the page is present
+		if (pages[i].pt_flags & PRESENT_BIT) {
+			// then setup this entry
+			if (pages[i].pt_flags & PAGE_SIZE_BIT){
+				ret = map_virt_to_phys(pages[i].vaddr, pages[i].paddr, pages[i].pt_flags);
+			}else{
+				ret = page_dir_add_4MB_entry(pages[i].vaddr, pages[i].paddr, pages[i].pt_flags);
+			}
+			if (ret != 0) {
+				printf("Scheduler page setup failed %d\n", ret);
+			}
+		}
+		// else do nothing
+	}
+  flush_tlb();
+}

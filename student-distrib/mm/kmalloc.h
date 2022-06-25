@@ -20,14 +20,14 @@
 #define INFO_SIZE 	sizeof(malloc_info_t)
 
 typedef struct malloc_info{
-	int start_addr;	///< the starting address of space
+	int start_addr;	///< the starting address of space (malloc info is right at this address!)
 	int size;		///< number of slabs;
 	char status; 	///< 0 for free, 1 for allocated
 	struct memory_list *link;
 } malloc_info_t;
 
 typedef struct memory_list {
-	char status;	///< 0 for not used;
+	char status;	///< 0 for not used- NOTE this is not the same as free/alloc! That's for malloc info. This is whether or not the struct is even being populated!
 	int size;
 	struct memory_list *prev;		///< addr to the previous linked memory
 	struct malloc_info *info;		///< malloc info
@@ -36,15 +36,26 @@ typedef struct memory_list {
 
 void kmalloc_init();
 
+/**
+ * @brief Put into words, this takes some free memory from the free linked list and 
+ *        marks it as allocated by moving it into the allocated linked list.
+ * @param size 
+ * @return void* 
+ */
 void* kmalloc(size_t size);
 
-void kfree(void* mem);
+/**
+ * @brief Move allocated memory back to free linked list
+ * 
+ * @param mem 
+ */
+int kfree(void* mem);
 
-void* malloc(size_t size);
+// void* malloc(size_t size);
 
-void* calloc(size_t count, size_t size);
+// void* calloc(size_t count, size_t size);
 
-void* free(void* mem);
+// void* free(void* mem);
 
 int get_free_page();
 
