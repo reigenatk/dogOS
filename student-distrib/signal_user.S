@@ -29,12 +29,57 @@ signal_user_ret:
 	popal # pop hw context back into place
 	ret
 
+
+task_kernel_process:
+	movl	$15, %eax // MAKE_INITD
+	int	$0x80
+	movl	$23, %eax // SYSCALL_FORK
+	int	$0x80
+	# On success, the PID of the child process is returned in the
+  # parent, and 0 is returned in the child
+	cmpl	$0,%eax
+	# Because we're calling fork on a process with PID 0
+	# and it returns the new pid of the next process (which should be 1)
+	# there are now two processes that start at this point so we need to distinguish the two
+	je	task_kernel_process$child
+	jmp	task_kernel_process$parent
+
+task_kernel_process$child:
+	// SYSCALL_EXECVE
+	movl	$25, %eax
+	// PATH
+	movl	$task_kernel_process$execve, %ebx
+	// ARGV
+	movl	$task_kernel_process$argv, %ecx
+	// ENVP
+	movl	$0, %edx
+	// CALL EXECVE
+	int	$0x80
+	// BAD!!!
+	int	$0x1
+
+task_kernel_process$execve:
+	.string	"/login"
+
+task_kernel_process$argv:
+	.long	task_kernel_process$execve
+	.long	0
+
+# this process (which has PID = 0) loops forever 
+task_kernel_process$parent:
+	jmp	task_kernel_process$parent
+
+
+
 # make sure this is the first one, its the size of entire signal_user page.
 size_of_signal_asm:
-   .long size_of_signal_asm - signal_user_base
+  .long size_of_signal_asm - signal_user_base
 
 offset_of_signal_systemcall_user:
   .long systemcall_user - signal_user_base
+
+task_kernel_process_offset:
+	.long task_kernel_process - signal_user_base
 
 offset_of_signal_user_ret:
   .long signal_user_ret - signal_user_base

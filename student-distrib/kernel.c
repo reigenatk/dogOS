@@ -193,9 +193,10 @@ void entry(unsigned long magic, unsigned long addr) {
 
     printf("Initializing PIT\n");
     init_PIT();
-    scheduling_start();
+    task_create_kernel_pid();
 
-    // launch first terminal
+    
+    task_start_kernel_pid();
 
     sti();
 

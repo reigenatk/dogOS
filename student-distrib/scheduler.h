@@ -68,7 +68,14 @@ void scheduler_update_taskregs(struct s_regs *regs);
 void scheduler_iret(struct s_regs* reg);
 
 /**
- * @brief Given a task object, setup the pages
+ * @brief assembly function to get magic number and the regs structure behind it
+ * 
+ * @return regs_t* pointer to the regs_t structure that current process set up
+ */
+regs_t *scheduler_get_magic();
+
+/**
+ * @brief Given a task object, setup the pages. 
  * 
  * @param proc 
  */

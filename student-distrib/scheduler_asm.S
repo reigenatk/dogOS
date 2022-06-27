@@ -1,4 +1,25 @@
+#define STACK_UNKO_MAGIC $1145141919
 
+.global scheduler_get_magic
+.global scheduler_iret
+
+
+scheduler_get_magic:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	%esp, %ecx
+
+scheduler_get_magic_loop:
+	movl	(%ecx),	%eax
+	cmpl	STACK_UNKO_MAGIC, %eax
+	je		scheduler_get_magic_found
+	addl	$4, %ecx
+	jmp		scheduler_get_magic_loop
+
+scheduler_get_magic_found:
+	leal	(%ecx), %eax
+	leave
+	ret
 
 scheduler_static_space:
 	.long	0

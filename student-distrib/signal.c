@@ -4,6 +4,7 @@
 #include "task.h"
 #include "paging.h"
 #include "lib.h"
+#include "scheduler.h"
 #include "ece391sysnum.h"
 #include "libc/sys/wait.h"
 
@@ -87,6 +88,9 @@ int32_t sys_sigsuspend(const sigset_t *mask) {
   }
   // set the status of the task to sleep
   get_task()->status = TASK_ST_SLEEP;
+
+  next_scheduled_task();
+  return 0;
 }
 
 int32_t sys_sigaction(int signum, int sigaction_ptr, int oldsigaction_ptr) {
@@ -153,9 +157,9 @@ void setup_frame(task* proc, int sig) {
     // Restart INT 0x80
 		// TODO validity check
 		if (*(uint8_t *)(proc->regs.eip - 2) == 0xcd) { // OPCode for INT: CD
-			task_user_pushl(&(proc->regs.esp), proc->regs.eip - 2);
+			push_onto_task_stack(&(proc->regs.esp), proc->regs.eip - 2);
 		} else {
-			task_user_pushl(&(proc->regs.esp), proc->regs.eip);
+			push_onto_task_stack(&(proc->regs.esp), proc->regs.eip);
 		}
   }
   else {
@@ -176,7 +180,7 @@ void setup_frame(task* proc, int sig) {
   // push return address (which runs sigreturn)
   uint32_t esp = push_onto_task_stack(&proc->regs.esp, (uint32_t) sigreturn_user_addr);
   
-  // finally we must run the handler
+  // finally we must run the handler 
   proc->regs.eip = (uint32_t) proc->sigacts[sig].handler;
 }
 

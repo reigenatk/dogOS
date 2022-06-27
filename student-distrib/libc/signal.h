@@ -58,7 +58,7 @@
  */
 typedef void (*sig_t)(int sig);
 
-/// Signal set (1 for signal OK to come thru, 0 for blocked)
+/// Signal set (1 to block the signal, 0 to let signal come thru)
 typedef uint32_t sigset_t;
 
 /**

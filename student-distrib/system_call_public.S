@@ -184,12 +184,3 @@ change_task:
 	iret
 
 
-.globl save_ebp, save_esp 
-
-save_esp:
-	mov %esp, %eax 
-	ret
-
-save_ebp:
-	mov %ebp, %eax 
-	ret

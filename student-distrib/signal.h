@@ -55,7 +55,8 @@ int32_t sys_sigprocmask(int how, int setp, int oldsetp);
        until delivery of a signal whose action is to invoke a signal
        handler or to terminate a process
  * https://man7.org/linux/man-pages/man2/sigsuspend.2.html
- */
+ * @return int32_t always returns -1 with errno set to indicate error (usually ERRINT)
+ */ 
 int32_t sys_sigsuspend(const sigset_t *mask);
 
 /**

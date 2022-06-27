@@ -7,6 +7,7 @@
 #include "system_calls.h"
 #include "signal.h"
 #include "scheduler.h"
+#include "elf.h"
 #include "wait.h"
 #include "mm/kmalloc.h"
 #include "errno.h"
@@ -200,12 +201,22 @@ int32_t find_unused_fd()
 int push_onto_task_stack(uint32_t* esp, uint32_t new_val) {
   *esp -= 4; // move esp for this user stack down 4
   *esp = new_val;
+  // value is bfc00000 if its hard to see. The reason why is because there's 0x400000 or 4MB stack for each user process starting at c0000000
+  if (*esp < 0xbfc00000) {
+		// Stack overflow!
+		return -EFAULT;
+	}
   return 0;
 }
 
 int push_buf_onto_task_stack(uint32_t* esp, uint8_t* buf, uint32_t len) {
   *esp -= len; // move esp for this user stack down 4
   *esp &= ~3;  // align to DWORD (last two bits zeroed)
+
+  if (*esp < 0xbfc00000) {
+		// Stack overflow!
+		return -EFAULT;
+	}
   memcpy(esp, buf, len);
   return 0;
 }
@@ -226,8 +237,8 @@ int32_t sys_fork() {
   child_task_ptr->parent_pid = cur_pid;
 
   // allocate a new region of memory to store the same pathname? Not sure why this kmalloc is needed but OK
-  child_task_ptr->wd = kmalloc(1024);
-  memcpy(child_task_ptr->wd, cur_task_ptr->wd);
+  child_task_ptr->wd = kmalloc(PATH_MAX_LENGTH);
+  memcpy(child_task_ptr->wd, cur_task_ptr->wd, PATH_MAX_LENGTH);
 
 
   // kernel stack initialization
@@ -304,8 +315,8 @@ int32_t sys_getpid() {
  * We need to dealloc pages, dynamic memory (heap), kernel stack, and change program status
  * @param t 
  */
-void task_release(task* t) {
   int i;
+void task_release(task* t) {
 
   // program status change
   t->status = TASK_ST_DEAD;
@@ -402,4 +413,270 @@ int32_t sys_waitpid(pid_t pid, int *wstatus, int options) {
   if (!wstatus) {
     return -EFAULT;
   }
+  int cur_proc_pid = get_task()->pid;
+
+  int found_child = 0;
+  // loop thru each process and check if any are children of current process
+  for (i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].pid == pid) {
+      // check if its parent is itself? Not sure about this one
+      // Shouldn't it be, check if parent is current process? I changed it below...
+      if (tasks[i].parent_pid != cur_proc_pid) {
+        return -ECHILD;
+      }
+      found_child = 1;
+      break;
+    }
+
+    // other case- if waiting on ANY pid, then we just have to check if its parrent is current pid
+    if ((pid < 0 || pid > MAX_TASKS) && tasks[i].parent_pid == cur_proc_pid) {
+      switch (tasks[i].status) {
+        case TASK_ST_RUNNING:
+          found_child = 1;
+          break;
+        case TASK_ST_ZOMBIE:
+          // could be a zombie cuz when we exit() we will zombie the process in one of the cases
+          *wstatus = tasks[i].exit_status;
+
+          // free the zombie process.
+          task_release(&tasks[i]);
+          return tasks[i].pid;
+        case TASK_ST_SLEEP:
+          // if WUNTRACED in options, then return if a child has stopped
+          if ((options & WUNTRACED) ) {
+            *wstatus = tasks[i].exit_status;
+            tasks[i].exit_status = 0;
+            return tasks[i].pid;
+          }
+      }
+    }
+  }
+  if (!found_child) {
+    // no relevant processes found
+    return -ECHILD;
+  }
+  // if WNOHANG was specified and one or more child(ren) specified by pid exist, but have not yet changed
+  // state, then 0 is returned.  On failure, -1 is returned. Because again wait will block the current process thread 
+  // until child process changes state
+  if (options & WNOHANG) {
+    return -ECHILD;
+  }
+
+  // set a new signal handler and assign it to SIGCHLD on the current process
+  sigaction_t sa;
+  sigemptyset(&(sa.mask));
+  sa.flags = SA_RESTART;
+  sa.handler = SIGHANDLER_IGNORE;
+  sys_sigaction(SIGCHLD, &sa, 0);
+
+  // now call sigsuspend to put current process to sleep and wait for a SIGCHLD signal
+
+  sigset_t st;
+  sigemptyset(&st); // lets all signals thru
+
+  // second part means "blocked by syscall" and first part includes syscall number which is WAIT
+  tasks[cur_proc_pid].exit_status = SYSCALL_WAITPID | WIFSYSCALL(-1);
+  sys_sigsuspend(&st);
+  return 0; // does not hit
+}
+
+int32_t sys_execve(char *pathname, int argv, int envp) {
+  char **argvv = (char **)argv;
+  char **envpp = (char **)envp;
+  
+  if (!pathname) {
+    return -1;
+  }
+  int ret;
+  // check ELF header
+  int fd = sys_open(pathname);
+  if (fd < 0) {
+    return fd;
+  }
+  else {
+    // file opened successfully
+    ret = elf_sanity(fd);
+    sys_close(fd);
+    if (ret != 0) {
+      return ret;
+    }
+  }
+  task_ptentry_t ptent_stack, tmp_pages[2];
+
+  // allocate a 4MB page for new stack (temporary at virtual addr 0xc0000000 - 0xc0400000)
+	ptent_stack.vaddr = 0xc0000000;
+	ptent_stack.paddr = 0;
+	ret = page_alloc_4MB((int *)&(ptent_stack.paddr));
+	if (ret != 0) {
+		// Page allocation failed. Probably ENOMEM
+		return -1;
+	}
+	ptent_stack.priv_flags = 0;
+	ptent_stack.pt_flags = PRESENT_BIT;
+	ptent_stack.pt_flags |= READ_WRITE_BIT;
+	ptent_stack.pt_flags |= USER_BIT;
+	ptent_stack.pt_flags |= PAGE_SIZE_BIT;
+	page_dir_add_4MB_entry(ptent_stack.vaddr, ptent_stack.paddr,
+						   ptent_stack.pt_flags);
+	flush_tlb();
+
+  task *proc = get_task();
+  // set stack ptr of new process
+	proc->regs.esp = 0xc0400000; // Default stack address
+
+  push_onto_task_stack(&(proc->regs.esp), 0); // Reserve dword for args lookup (Dunno what this does)
+
+  uint32_t *u_argv, *u_envp, argc, envc;
+  // Parse argv
+  // so what I think this is doing is pushing the values in argv onto the user stack
+  // and then also populating u_argv array with the location to which it is at.
+	u_argv = (uint32_t *) 0xc0000000; // Temporarily use top of stack as heap
+	if (argv) {
+		for (argc = 0; argv[argc]; argc++) {
+			push_buf_onto_task_stack(&(proc->regs.esp), (uint8_t *) argv[argc],
+							strlen(argv[argc])+1);
+			u_argv[argc] = proc->regs.esp - 0x400000; // Offset 4MB
+		}
+	} else {
+		argc = 0;
+	}
+	u_argv[argc] = 0; // Terminating zero
+	// Parse envp
+	u_envp = u_argv + argc + 1;
+	if (envp) {
+		for (envc = 0; envp[envc]; envc++) {
+			push_buf_onto_task_stack(&(proc->regs.esp), (uint8_t *) envp[envc],
+							strlen(envp[envc])+1);
+			u_envp[envc] = proc->regs.esp - 0x400000; // Offset 4MB
+		}
+	} else {
+		envc = 0;
+	}
+	u_envp[envc] = 0; // Terminating zero
+
+  // Move temp values back (no clue what this is pushing- why do we have to push twice?)
+  // so do u_argv and u_envp hold offset values to each of the arguments/env variables?
+	push_buf_onto_task_stack(&(proc->regs.esp), (uint8_t *) u_argv, 4*(argc+1));
+	u_argv = (uint32_t *)(proc->regs.esp - 0x400000); // Offset 4MB
+	push_buf_onto_task_stack(&(proc->regs.esp), (uint8_t *) u_envp, 4*(envc+1));
+	u_envp = (uint32_t *)(proc->regs.esp - 0x400000); // Offset 4MB
+	push_onto_task_stack(&(proc->regs.esp), (uint32_t) u_envp);
+	push_onto_task_stack(&(proc->regs.esp), (uint32_t) u_argv);
+	push_onto_task_stack(&(proc->regs.esp), argc);
+
+	// ece391_getargs workaround: bottom of stack points to argv
+	*(uint32_t *)(0xc0400000 - 4) = (uint32_t) u_argv;
+
+	strcpy((char *)0xc0000000, (char *)pathname); // Copy path to top-of-stack
+
+  for (i = 3; i < TASK_MAX_OPEN_FILES; i++) {
+		if (proc->files[i]) {
+			sys_close(i);
+		}
+	}
+
+  // release previous process
+  ret = task_current_pid();
+
+  // make it so that working directory memory isnt freed for the task
+  path_prev = proc->wd;
+	proc->wd = NULL;
+
+  // these two will unmap + unallocate all pages, and also the kernel stack
+	scheduler_page_clear(proc);
+	task_release(proc);
+
+  // restore the working directory, say the task is still running (because it is, we just changed programs)
+	proc->wd = path_prev;
+	proc->status = TASK_ST_RUNNING;
+
+	// Update kernel stack PID
+	((task_ks_t *)(proc->ks_esp))[-1].pid = ret;
+
+  // Re-map new stack to bfc00000, dont ask me why
+	page_dir_delete_entry(ptent_stack.vaddr);
+	ptent_stack.vaddr = 0xbfc00000;
+	page_dir_add_4MB_entry(ptent_stack.vaddr, ptent_stack.paddr,
+						   ptent_stack.pt_flags);
+
+  // copy into some temporary pages
+	memcpy(tmp_pages+0, &ptent_stack, sizeof(task_ptentry_t));
+	memset(tmp_pages+1, 0, sizeof(task_ptentry_t));
+	proc->pages = tmp_pages;
+	proc->regs.esp -= 0x400000; // Offset 4MB
+	page_flush_tlb();
+
+  
+}
+
+void task_create_kernel_pid() {
+	int i;//iterator
+	// initialize the kernel task
+	task* init_task = tasks + 1;
+	memset(init_task, 0, sizeof(task));
+	// should open fd 0 and 1
+	init_task->parent_pid = -1;
+
+	tss.ss0 = KERNEL_DS;
+	tss.esp0 = init_task->k_esp = (uint32_t)(kstack+1);
+
+	init_task->sigacts[SIGCHLD].flags = SA_NOCLDWAIT;
+	
+  // alloc some memory for working directory, pages
+	init_task->wd = kmalloc(sizeof(PATH_MAX_LENGTH));
+  strcpy(init_task->wd, "/");
+	init_task->pages = kmalloc(4 * sizeof(task_ptentry_t));
+	init_task->page_limit = 4;
+	
+	init_task->uid = 0; // root
+	init_task->gid = 0; // root
+
+	// initialize kernel stack page
+	for (i=0; i<256; ++i){
+		kstack[i].pid = -1;
+	}
+
+	// kick start- give kernel task pid of 0, not 1, for no particular reason.
+	init_task->pid = 0;
+	init_task->status = TASK_ST_RUNNING;
+
+	kstack[0].pid = 0;
+}
+
+void task_start_kernel_pid() {
+	// iret to the kernel process. First turn on scheduling tho which is important
+  // because we will call fork within task_kernel_process_iret() and it needs to be able to run the process
+  // which originates from that fork call!
+	scheduling_start();
+	task_kernel_process_iret();
+}
+
+int task_make_initd() {
+	struct s_regs* regs;
+	int ret;
+
+	if (task_current_pid() != 0) {
+		// Only initd can call syscall 15
+		return -EPERM;
+	}
+
+	// load register address according to magic number on the stack
+	regs = scheduler_get_magic();
+
+	// save the registers of from process
+	memcpy(&(tasks[0].regs), regs, sizeof(regs_t));
+
+	// ret = syscall_open((int)"/dev/stdin", O_RDONLY, 0);
+	// if (ret != 0) {
+	// 	printf("Cannot open stdin %d\n", ret);
+	// }
+	// ret = syscall_open((int)"/dev/stdout", O_WRONLY, 0);
+	// if (ret != 1) {
+	// 	printf("Cannot open stdout %d\n", ret);
+	// }
+	// ret = syscall_open((int)"/dev/stderr", O_WRONLY, 0);
+	// if (ret != 2) {
+	// 	printf("Cannot open stderr %d\n", ret);
+	// }
+	return 0;
 }

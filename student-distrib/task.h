@@ -4,6 +4,7 @@
 #include "types.h"
 #include "libc/signal.h"
 #include "interrupt_handlers.h"
+#include "libc/sys/types.h"
 
 // defined by MP3
 #define MAX_OPEN_FILES 8
@@ -83,6 +84,8 @@ typedef struct file_descriptor {
 #define COPY_ON_WRITE 1 /// for priv_flags field, mark the page of a process as copy on write
 
 #define SIG_MAX 32
+
+#define PATH_MAX_LENGTH 256
 
 /**
  *	A mapped memory page in a process's mapped page table
@@ -171,6 +174,17 @@ task* init_task(uint32_t pid);
 
 int32_t find_unused_fd();
 
+/**
+ * @brief creates pcb for the kernel task, gives it a PID of 0.
+ * 
+ */
+void task_create_kernel_pid();
+
+/**
+ * @brief Turns on the scheduler, then returns to kernel process
+ * 
+ */
+void task_start_kernel_pid();
 
 // some syscalls
 
@@ -214,12 +228,38 @@ int32_t sys_exit(int32_t error_code);
        this behavior is modifiable via the options argument, as
        described below.
  * https://man7.org/linux/man-pages/man2/waitpid.2.html
- * @param pid The pid to wait on
+ * @param pid The pid to wait on (if this is -1, it means wait on ANY child process)
  * @param wstatus A pointer to an int- stores a status code into this pointer indicating some info about how the process terminated
  * @param options 
- * @return int32_t 
+ * @return int32_t on success, returns the process ID of the terminated
+       child; on failure, -1 is returned.
+
  */
 int32_t sys_waitpid(pid_t pid, int *wstatus, int options);
+
+/**
+ *	execve() executes the program referred to by pathname.  This
+       causes the program that is currently being run by the calling
+       process to be replaced with a new program, with newly initialized
+       stack, heap, and (initialized and uninitialized) data segments.
+ *  Keyword: REPLACE!!! so that means current proces should be terminated and replace w/ new one. 
+ *  In ECE391 we made a new process, but here we dont wanna do that!
+ * 
+ *	@param pathp: pointer to `char *`, the path to the executable file
+ *	@param argvp: pointer to `char *[]`, an array of arguments
+ *	@param envpp: pointer to `char *[]`, an array of environment variables
+ *	@return The caller will no longer exist to receive the return value if the
+ *			call succeeded. The negative of an errno is returned on failure.
+ *	@note argv and envp are NULL-terminated arrays
+ */
+int32_t sys_execve(char *pathname, int argv, int envp);
+
+/**
+ * @brief A system call we made which will initialize more stuff about the kernel init process
+ * 
+ * @return int 
+ */
+int task_make_initd();
 
 /**
  * @brief A way to add something to the user stack of a process
@@ -249,4 +289,10 @@ physical 12 MB.
 uint32_t calculate_task_physical_address(uint32_t pid);
 
 uint32_t calculate_task_pcb_pointer(uint32_t pid);
+
+/**
+ * @brief Internally just calls task_kernel_process from signal_user.S
+ * 
+ */
+void task_kernel_process_iret();
 #endif

@@ -10,7 +10,7 @@
 // reference https://elixir.bootlin.com/linux/v3.0/source/arch/x86/include/asm/ptrace.h
 // basically everytime we pusha. Stores all the info about a process. I think TSS stores/uses this?
 // 14 entries btw, first 9 will get you the GPR (general purpose registers)
-struct s_regs {
+typedef struct s_regs {
 	uint32_t magic;		///< Should be 1145141919
 	uint32_t edi;		///< edi saved by pusha
 	uint32_t esi;		///< esi saved by pusha
@@ -25,7 +25,7 @@ struct s_regs {
 	uint32_t eflags;	///< eflags in iret structure
 	uint32_t esp;		///< esp in iret structure
 	uint32_t ss;		///< ss in iret structure
-};
+} regs_t;
 
 void init_interrupt_descriptors(idt_desc_t* idt);
 

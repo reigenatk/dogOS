@@ -53,7 +53,9 @@ void register_all_syscalls() {
 	// ece391_sigreturn
 	syscall_register(10, sys_sigreturn);
 
-  	// Process
+  syscall_register(15, task_make_initd);
+
+  // Process
 	syscall_register(SYSCALL_FORK, sys_fork);
 	syscall_register(SYSCALL_EXIT, sys_exit);
 	syscall_register(SYSCALL_EXECVE, sys_execve);

@@ -35,6 +35,7 @@
 #define SIGUSR2		$31	///< User defined signal 2
 #define SIG_MAX		$32	///< Total number of signals
 
+# the below value is same as STACK_UNKO_MAGIC in scheduler_asm.S btw
 #define REG_MAGIC $1145141919
 
 # for popping the error code that is pushed onto stack by processor

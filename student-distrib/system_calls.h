@@ -5,9 +5,6 @@
 #include "libc/sys/types.h"
 #include "ece391sysnum.h"
 
-void syscall_interrupt_handler(uint32_t syscall_no, uint32_t arg1, 
-  uint32_t arg2, uint32_t arg3);
-
 void test_syscall();
 
 // special function to change from ring 0 to ring 3 (in .S file)
@@ -56,6 +53,10 @@ int32_t fork();
 
 // expose some of these syscalls publically so we can use them in the kernel
 int32_t sys_close(int32_t fd);
+
+int32_t sys_open(const uint8_t* filename);
+
+int32_t sys_read(int32_t fd, void* buf, int32_t nbytes);
 
 // jump table
 typedef int32_t (*syscall_handler)(int, int, int);
