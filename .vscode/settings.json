@@ -24,7 +24,8 @@
     "signal_user.h": "c",
     "debug.h": "c",
     "errno.h": "c",
-    "kmalloc.h": "c"
+    "kmalloc.h": "c",
+    "userutils.h": "c"
   },
   "C_Cpp.errorSquiggles": "Disabled"
 }

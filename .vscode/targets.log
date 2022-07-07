@@ -7,7 +7,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # There is NO WARRANTY, to the extent permitted by law.
  
 
-# Make data base, printed on Wed Jul 06 17:10:52 2022
+# Make data base, printed on Wed Jul 06 21:02:33 2022
 
 # Variables
 
@@ -28,8 +28,7 @@ CUDA_PATH_V11_5 = C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5
 # automatic
 ?D = $(patsubst %/,%,$(patsubst %\,%,$(dir $?)))
 # automatic
-@D = $(patsubst %/,%,$(patsubst %\,% 
-,$(dir $@)))
+@D = $(patsubst %/,%,$(patsubst %\,%,$(dir $@)))
 # environment
 HOMEDRIVE = C:
 # automatic
@@ -47,15 +46,14 @@ VSCODE_NLS_CONFIG = {"locale":"en-us","availableLanguages":{},"_languagePackSupp
 # environment
 VBOX_MSI_INSTALL_PATH = C:\Program Files\Oracle\VirtualBox\
 # environment
-PYCHARM COMMUNITY EDITION = D:\Program Files\PyCharm Community Edition 2022.1\bin;
+PYCHA 
+RM COMMUNITY EDITION = D:\Program Files\PyCharm Community Edition 2022.1\bin;
 # environment
 ONEDRIVE = C:\Users\richa\OneDrive
 # environment
 PATHEXT = .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC
 # makefile
 MAKEFILE_LIST := 
-# environment
-FPS_BROWSER_USER_PROFILE_STRING = Default
 # environment
 TMP = C:\Users\richa\AppData\Local\Temp
 # environment
@@ -65,9 +63,9 @@ PROGRAMW6432 = C:\Program Files
 # environment
 PROGRAMDATA = C:\ProgramData
 # environment
-VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-200b513b-efa8-4266-a60a-49ced2a6b2a2-sock
+VSCODE_IPC_HOOK_EXTHOST = \\.\pipe\vscode-ipc-e34a61a4-9413-4e35-8ba0-505564a4706a-sock
 # environment
-VSCODE_CWD = C:\Users\richa\AppData\Local\Programs\Microsoft VS Code
+VSCODE_CWD = C:\Windows\system32
 # environment
 PATH = C:\Program Files\Eclipse Adoptium\jdk-11.0.15.10-hotspot\bin;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;D:\VMWare\bin\;C:\Program Files (x86)\Common Files\Intel\Shared Libraries\redist\intel64\compiler;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\libnvvp;C:\Program Files (x86)\Razer Chroma SDK\bin;C:\Program Files\Razer Chroma SDK\bin;C:\Program Files (x86)\Razer\ChromaBroadcast\bin;C:\Program Files\Razer\ChromaBroadcast\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Git\cmd;C:\Program Files\Git\bin;C:\Users\richa\AppData\Roaming\Sublime Text 3\Packages\SublimeAStyleFormatter;C:\mingw-w64-v7.0.0 (1);C:\MinGW\bin;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;D:\command;C:\Users\richa\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.8_qbz5n2kfra8p0\LocalCache\local-packages\Python38\Scripts;C:\Users\richa\Desktop\mongodb-win32-x86_64-windows-4.4.2\bin;C:\Program Files (x86)\Yarn\bin\;C:\Users\ugur\AppData\Roaming\npm;C:\Users\richa\bin;C:\Program Files\Kubernetes\Minikube;C:\Windows\system32\config\systemprofile\AppData\Local\Microsoft\WindowsApps;C:\Program Files\Git LFS;C:\Program Files (x86)\dotnet\;D:\MinGW\bin;C:\Program Files\CMake\bin;C:\Program Files\NVIDIA Corporation\Nsight Compute 2021.3.0\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\bin\Hostx64\x64;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\DockerDesktop\version-bin;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\130\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files\nodejs\;C:\Program Files\PuTTY\;C:\Program Files\Microsoft Network Monitor 3\;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Program Files (x86)\Windows Kits\10\Debuggers\x86;D:\CTF Tools\nmap-7.92;C:\Program Files\Go\bin;D:\Coding\Python\Selenium1;C:\Users\richa\.cargo\bin;C:\Users\richa\AppData\Local\Microsoft\WindowsApps;C:\MinGW\bin;C:\Users\richa\AppData\Local\atom\bin;C:\Users\richa\AppData\Local\hyper\app-3.0.2\resources\bin;D:\heroku\bin;C:\Users\richa\AppData\Local\Yarn\bin;C:\Users\richa\AppData\Local\GitHubDesktop\bin;C:\Users\richa\.dotnet\tools;C:\Users\richa\AppData\Roaming\npm;D:\Program Files\ghcup\bin;C:\Users\richa\AppData\Roaming\cabal\bin;C:\tools\ghc-9.2.1\bin;C:\tools\msys64;C:\Users\richa\AppData\Roaming\local\bin;C:\Users\richa\AppData\Roaming\TinyTeX\bin\win32;C:\Program Files\Git\usr\bin;D:\Anaconda\Scripts;D:\Program Files\PyCharm Community Edition 2022.1\bin;;D:\CTF Tools\nmap-7.92;C:\Users\richa\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\richa\go\bin;D:\Coding\Python\Selenium1;
 # environment
@@ -89,7 +87,7 @@ CHOCOLATEYINSTALL = C:\ProgramData\chocolatey
 # environment
 ALLUSERSPROFILE = C:\ProgramData
 # environment
-GOPATH = C:\Users\richa\go
+GOPATH = D:\go
 # environment
 VSCODE_LOG_STACK = false
 # environment
@@ -105,7 +103,7 @@ NVTOOLSEXT_PATH = C:\Program Files\NVIDIA Corporation\NvToolsExt\
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_12400_UTPHHNRIBVCNXOTK
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_18944_ZPYGXZVRQDFWFJBB
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
@@ -127,10 +125,9 @@ PUBLIC = C:\Users\Public
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
-CHOCOLA 
-TEYTOOLSLOCATION = C:\tools
+CHOCOLATEYTOOLSLOCATION = C:\tools
 # environment
-VSCODE_CODE_CACHE_PATH = C:\Users\richa\AppData\Roaming\Code\CachedData\c3511e6c69bb39013c4a4b7b9566ec1ca73fc4d5
+VSCODE_CODE_CACHE_PATH = C:\Users\richa\AppData\Roaming\Code\CachedData\30d9c6cd9483b2cc586687151bcbcd635f373630
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
@@ -144,8 +141,7 @@ VSCODE_HANDLES_UNCAUGHT_ERRORS = true
 # environment
 USERDOMAIN = DESKTOP-IBPM9GG
 # environment
-MIC_LD_LIBRAR 
-Y_PATH = C:\Program Files (x86)\Common Files\Intel\Shared Libraries\compiler\lib\mic
+MIC_LD_LIBRARY_PATH = C:\Program Files (x86)\Common Files\Intel\Shared Libraries\compiler\lib\mic
 # environment
 MAKELEVEL := 0
 # default
@@ -181,7 +177,7 @@ PROCESSOR_IDENTIFIER = AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD
 # environment
 OS = Windows_NT
 # environment
-VSCODE_IPC_HOOK = \\.\pipe\3f936b0d757c6d7e5d5bdfaf0e55dc01-1.67.2-main-sock
+VSCODE_IPC_HOOK = \\.\pipe\3f936b0d757c6d7e5d5bdfaf0e55dc01-1.68.1-main-sock
 # environment
 HOMEPATH = \Users\richa
 # environment
@@ -202,8 +198,7 @@ SYSTEMROOT = C:\Windows
 _MSYS2_PREFIX = x86_64
 # automatic
 +D = $(patsubst %/,%,$(patsubst %\,%,$(dir $+)))
-# au 
-tomatic
+# automatic
 +F = $(notdir $+)
 # environment
 APPDATA = C:\Users\richa\AppData\Roaming
@@ -232,7 +227,8 @@ SESSIONNAME = Console
 # environment
 PROCESSOR_REVISION = 7100
 # environment
-VS140COMNTOOLS = D:\Visual Studio Updates 2015\Common7\Tools\
+VS140COMNTOOLS = D:\Visual Studi 
+o Updates 2015\Common7\Tools\
 # default
 .INCLUDE_DIRS = C:/MinGW/include
 # default
@@ -244,13 +240,11 @@ LANG = C
 # environment
 PROCESSOR_LEVEL = 23
 # environment
-FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
-# environment
-VSCODE_PID = 12400
+VSCODE_PID = 18944
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-IBPM9GG
 # variable set hash-table stats:
-# Load=117/1024=11%, Rehash=0, Collisions=11/132=8%
+# Load=115/1024=11%, Rehash=0, Collisions=11/130=8%
 
 # Pattern-specific Variable Values
 
@@ -269,11 +263,11 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-IBPM9GG
 # C:\Program Files\Razer\ChromaBroadcast\bin (key C:/Program Files/Razer/ChromaBroadcast/bin, mtime 1631899131): 5 files, no impossibilities.
 # C:\Program Files (x86)\Common Files\Intel\Shared Libraries\redist\intel64\compiler (key C:/Program Files (x86)/Common Files/Intel/Shared Libraries/redist/intel64/compiler, mtime 1644193510): 17 files, no impossibilities.
 # C:\Windows (key C:/Windows, mtime 1617391787): 122 files, no impossibilities.
-# C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\libnvvp (key C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.5/libnvvp, mtime 1635281983): 14 files, no impossibilities.
+# C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\libnvvp ( 
+key C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.5/libnvvp, mtime 1635281983): 14 files, no impossibilities.
 # C:\Windows\System32\Wbem (key C:/Windows/System32/Wbem, mtime 1655446502): 170 files, no impossibilities.
 # D:\VMWare\bin\ (key D:/VMWare/bin/, mtime 1651802435): 4 files, no impossibilities.
-# C:\Windows\system32 (key C:/ 
-Windows/system32, mtime 1657134968): 3105 files, no impossibilities.
+# C:\Windows\system32 (key C:/Windows/system32, mtime 1657134968): 3105 files, no impossibilities.
 # C:\Program Files (x86)\Razer\ChromaBroadcast\bin (key C:/Program Files (x86)/Razer/ChromaBroadcast/bin, mtime 1631899131): 5 files, no impossibilities.
 # C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\bin (key C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.5/bin, mtime 1635281998): 44 files, no impossibilities.
 # C:\Program Files\Razer Chroma SDK\bin (key C:/Program Files/Razer Chroma SDK/bin, mtime 1635892427): 5 files, no impossibilities.
@@ -311,7 +305,10 @@ makefile:
 #  Implicit rule search has been done.
 #  File does not exist.
 #  File has been updated.
-#  Failed to be updated.
+#  Failed to be updated. 
+make.exe: *** No rule to make target 'all'.  Stop.
+
+
 
 # Not a target:
 .DEFAULT:
@@ -342,9 +339,6 @@ GNUmakefile:
 # strcache performance: lookups = 3936 / hit rate = 1%
 # hash-table stats:
 # Load=3874/8192=47%, Rehash=0, Collisions=1606/3936=41%
-# 
-make.exe: *** No rule to make target 'all'.  Stop.
-
- Finished Make data base on Wed Jul 06 17:10:52 2022
+# Finished Make data base on Wed Jul 06 21:02:33 2022
 
  

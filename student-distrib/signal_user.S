@@ -44,9 +44,10 @@ task_kernel_process:
 	je	task_kernel_process$child
 	jmp	task_kernel_process$parent
 
+# and this process with PID = 1 will run login, by invoking execve syscall
 task_kernel_process$child:
 	// SYSCALL_EXECVE
-	movl	$25, %eax
+	movl	$25, %eax // SYSCALL_EXECVE
 	// PATH
 	movl	$task_kernel_process$execve, %ebx
 	// ARGV
